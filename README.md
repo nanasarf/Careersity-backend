@@ -21,7 +21,8 @@ API -> Infrastructure -> Application -> Domain
 ## Prerequisites
 
 - .NET 8 SDK or a newer SDK capable of targeting .NET 8
-- PostgreSQL will be required in a later development step, but is not required for this foundation
+- PostgreSQL 16 for local persistence work
+- Docker Desktop when running the PostgreSQL integration tests
 
 ## Build and run
 
@@ -39,6 +40,45 @@ The launch profiles expose:
 - Swagger (Development): `http://localhost:5080/swagger` or `https://localhost:7080/swagger`
 - Health check: `http://localhost:5080/health` or `https://localhost:7080/health`
 
+## PostgreSQL persistence
+
+The schema uses plural PascalCase table names and stores GUIDs as PostgreSQL `uuid`, enums as readable strings, and audit timestamps as `timestamp with time zone`. Database registration is currently optional: when `ConnectionStrings:CareersityDatabase` is empty, the API still starts and `/health` remains independent of PostgreSQL.
+
+For local development, set the connection string through an environment variable:
+
+```powershell
+$env:ConnectionStrings__CareersityDatabase="Host=localhost;Port=5432;Database=careersity;Username=postgres;Password=postgres"
+```
+
+Alternatively, use .NET user secrets from the API project:
+
+```powershell
+dotnet user-secrets init --project src/Careersity.Api
+dotnet user-secrets set "ConnectionStrings:CareersityDatabase" "Host=localhost;Port=5432;Database=careersity;Username=postgres;Password=postgres" --project src/Careersity.Api
+```
+
+Create a local PostgreSQL 16 container when needed:
+
+```powershell
+docker run --name careersity-postgres -e POSTGRES_DB=careersity -e POSTGRES_USER=postgres -e POSTGRES_PASSWORD=postgres -p 5432:5432 -d postgres:16
+```
+
+Create and apply migrations from the repository root:
+
+```powershell
+dotnet ef migrations add MigrationName --project src/Careersity.Infrastructure --startup-project src/Careersity.Api --context CareersityDbContext --output-dir Persistence/Migrations
+dotnet ef database update --project src/Careersity.Infrastructure --startup-project src/Careersity.Api --context CareersityDbContext
+```
+
+Database integration tests use Testcontainers to start an isolated PostgreSQL 16 instance and require a running Docker daemon:
+
+```powershell
+docker version
+dotnet test tests/Careersity.IntegrationTests/Careersity.IntegrationTests.csproj
+```
+
+The current migration covers learning-content structure only: careers, pathways, skills, courses, lessons, assessments, and projects. Case-insensitive answer-option text uniqueness is enforced by the Domain; persistence-level enforcement is deferred. Repositories, feature APIs, users, authentication, enrollment, and learner progress are not implemented.
+
 ## Current status
 
-This repository contains the compilable backend foundation only. Dependency injection, Swagger/OpenAPI, health checks, centralized build settings, and test projects are configured. Database modeling, a real `DbContext`, migrations, authentication, and Careersity business features are intentionally not implemented yet. The committed connection string is an empty placeholder and contains no secret.
+This repository contains the domain and EF Core persistence foundations. Dependency injection, Swagger/OpenAPI, health checks, PostgreSQL mappings and migrations, centralized build settings, and test projects are configured. The committed connection string is an empty placeholder and contains no secret.
