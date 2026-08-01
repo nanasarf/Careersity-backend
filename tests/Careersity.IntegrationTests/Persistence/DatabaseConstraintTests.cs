@@ -4,6 +4,7 @@ using Careersity.Domain.Courses;
 using Careersity.Domain.Enums;
 using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
+using Careersity.Application.Common.Exceptions;
 using Xunit;
 
 namespace Careersity.IntegrationTests.Persistence;
@@ -17,11 +18,11 @@ public sealed class DatabaseConstraintTests(PostgreSqlFixture fixture)
         var suffix = Guid.NewGuid().ToString("N");
         await using var context = fixture.CreateContext();
         context.CareerCategories.AddRange(new CareerCategory("One", $"duplicate-{suffix}"), new CareerCategory("Two", $"duplicate-{suffix}"));
-        await context.Invoking(x => x.SaveChangesAsync()).Should().ThrowAsync<DbUpdateException>();
+        await context.Invoking(x => x.SaveChangesAsync()).Should().ThrowAsync<ConflictException>();
 
         await using var courseContext = fixture.CreateContext();
         courseContext.Courses.AddRange(CreateCourse($"duplicate-course-{suffix}"), CreateCourse($"duplicate-course-{suffix}"));
-        await courseContext.Invoking(x => x.SaveChangesAsync()).Should().ThrowAsync<DbUpdateException>();
+        await courseContext.Invoking(x => x.SaveChangesAsync()).Should().ThrowAsync<ConflictException>();
     }
 
     [Fact]

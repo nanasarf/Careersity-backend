@@ -4,11 +4,14 @@ using Careersity.Domain.Courses;
 using Careersity.Domain.Projects;
 using Careersity.Domain.Skills;
 using Microsoft.EntityFrameworkCore;
+using Careersity.Application.Abstractions.Persistence;
+using Careersity.Application.Common.Exceptions;
+using Npgsql;
 
 namespace Careersity.Infrastructure.Persistence;
 
 /// <summary>EF Core unit of persistence for Careersity learning content.</summary>
-public sealed class CareersityDbContext(DbContextOptions<CareersityDbContext> options) : DbContext(options)
+public sealed class CareersityDbContext(DbContextOptions<CareersityDbContext> options) : DbContext(options), ICareersityDbContext
 {
     public DbSet<CareerCategory> CareerCategories => Set<CareerCategory>();
     public DbSet<Career> Careers => Set<Career>();
@@ -30,5 +33,17 @@ public sealed class CareersityDbContext(DbContextOptions<CareersityDbContext> op
     {
         base.OnModelCreating(modelBuilder);
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(CareersityDbContext).Assembly);
+    }
+
+    public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            return await base.SaveChangesAsync(cancellationToken);
+        }
+        catch (DbUpdateException exception) when (exception.InnerException is PostgresException { SqlState: PostgresErrorCodes.UniqueViolation })
+        {
+            throw new ConflictException("The operation conflicts with an existing career catalog record.");
+        }
     }
 }

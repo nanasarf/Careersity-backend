@@ -40,6 +40,45 @@ The launch profiles expose:
 - Swagger (Development): `http://localhost:5080/swagger` or `https://localhost:7080/swagger`
 - Health check: `http://localhost:5080/health` or `https://localhost:7080/health`
 
+## Career catalog API
+
+The first feature slice supports career-category browsing, career search/detail, career skill requirements, and ordered primary career pathways. Public responses expose DTOs and include Published content only.
+
+Public routes:
+
+```text
+GET /api/career-categories
+GET /api/careers?page=1&pageSize=20&search=engineer&categoryId={guid}
+GET /api/careers/{slug}
+GET /api/careers/{careerId}/pathway
+```
+
+Administrative routes are under `/api/admin/career-categories` and `/api/admin/careers`. They support category and career lifecycle operations, career-skill assignments, pathways, levels, and pathway course assignments.
+
+> **Security warning:** Admin routes are temporarily unsecured because authentication and authorization have not been implemented. Do not expose this API to an untrusted network.
+
+A minimal PowerShell creation flow is:
+
+```powershell
+$category = Invoke-RestMethod -Method Post -Uri http://localhost:5080/api/admin/career-categories -ContentType application/json -Body '{"name":"Technology","slug":"technology","description":"Technology careers"}'
+Invoke-RestMethod -Method Post -Uri "http://localhost:5080/api/admin/career-categories/$($category.id)/publish"
+
+$careerBody = @{
+  careerCategoryId = $category.id
+  title = "Software Engineer"
+  slug = "software-engineer"
+  shortDescription = "Builds reliable software systems."
+  detailedDescription = $null
+  responsibilities = $null
+  estimatedDurationWeeks = 24
+} | ConvertTo-Json
+$career = Invoke-RestMethod -Method Post -Uri http://localhost:5080/api/admin/careers -ContentType application/json -Body $careerBody
+Invoke-RestMethod -Method Post -Uri "http://localhost:5080/api/admin/careers/$($career.id)/publish"
+Invoke-RestMethod -Uri "http://localhost:5080/api/careers/software-engineer"
+```
+
+Career endpoints require PostgreSQL. When the connection string is absent, `/health` and Swagger remain available while career-catalog requests return `503 Service Unavailable` with Problem Details.
+
 ## PostgreSQL persistence
 
 The schema uses plural PascalCase table names and stores GUIDs as PostgreSQL `uuid`, enums as readable strings, and audit timestamps as `timestamp with time zone`. Database registration is currently optional: when `ConnectionStrings:CareersityDatabase` is empty, the API still starts and `/health` remains independent of PostgreSQL.
@@ -77,8 +116,8 @@ docker version
 dotnet test tests/Careersity.IntegrationTests/Careersity.IntegrationTests.csproj
 ```
 
-The current migration covers learning-content structure only: careers, pathways, skills, courses, lessons, assessments, and projects. Case-insensitive answer-option text uniqueness is enforced by the Domain; persistence-level enforcement is deferred. Repositories, feature APIs, users, authentication, enrollment, and learner progress are not implemented.
+The current migration covers learning-content structure only: careers, pathways, skills, courses, lessons, assessments, and projects. Case-insensitive answer-option text uniqueness is enforced by the Domain; persistence-level enforcement is deferred. Career catalog APIs are implemented, but course administration, users, authentication, authorization, enrollment, learner progress, assessment attempts, and project submissions are not.
 
 ## Current status
 
-This repository contains the domain and EF Core persistence foundations. Dependency injection, Swagger/OpenAPI, health checks, PostgreSQL mappings and migrations, centralized build settings, and test projects are configured. The committed connection string is an empty placeholder and contains no secret.
+This repository contains the Domain and EF Core persistence foundations plus the first career-catalog Application/API vertical slice. The committed connection string is an empty placeholder and contains no secret.

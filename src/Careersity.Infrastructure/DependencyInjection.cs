@@ -2,6 +2,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.EntityFrameworkCore;
 using Careersity.Infrastructure.Persistence;
+using Careersity.Application.Abstractions.Persistence;
 
 namespace Careersity.Infrastructure;
 
@@ -18,6 +19,11 @@ public static class DependencyInjection
         if (!string.IsNullOrWhiteSpace(connectionString))
         {
             services.AddDbContext<CareersityDbContext>(options => options.UseNpgsql(connectionString));
+            services.AddScoped<ICareersityDbContext>(provider => provider.GetRequiredService<CareersityDbContext>());
+        }
+        else
+        {
+            services.AddScoped<ICareersityDbContext, UnavailableCareersityDbContext>();
         }
 
         return services;
