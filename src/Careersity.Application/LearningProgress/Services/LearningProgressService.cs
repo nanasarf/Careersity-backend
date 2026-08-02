@@ -64,7 +64,7 @@ public sealed class LearningProgressService(ICareersityDbContext db, ICurrentUse
     {
         var enrollment = await FindEnrollmentAsync(enrollmentId, true, token);
         var graph = await LoadGraphAsync(enrollment, token);
-        return BuildDetail(enrollment, graph);
+        return await BuildDetailAsync(enrollment, graph, token);
     }
 
     public async Task PauseAsync(Guid id, CancellationToken token) { var x = await FindEnrollmentAsync(id, false, token); x.Pause(); await db.SaveChangesAsync(token); }
@@ -132,7 +132,8 @@ public sealed class LearningProgressService(ICareersityDbContext db, ICurrentUse
     private async Task<CareerEnrollment> FindEnrollmentAsync(Guid id, bool children, CancellationToken token)
     {
         var userId = UserId(); IQueryable<CareerEnrollment> query = db.CareerEnrollments;
-        if (children) query = query.Include(x => x.CourseProgressRecords).ThenInclude(x => x.LessonProgressRecords);
+        if (children) query = query.Include(x => x.CourseProgressRecords).ThenInclude(x => x.LessonProgressRecords)
+            .Include(x => x.CourseProgressRecords).ThenInclude(x => x.ExternalResourceProgressRecords);
         return await query.SingleOrDefaultAsync(x => x.Id == id && x.UserId == userId, token) ?? throw new NotFoundException("Enrollment was not found.");
     }
 
@@ -184,20 +185,22 @@ public sealed class LearningProgressService(ICareersityDbContext db, ICurrentUse
         if (required.Count > 0 && required.All(completed.Contains)) enrollment.Complete();
     }
 
-    private CareerEnrollmentDetailDto BuildDetail(CareerEnrollment enrollment, PathwayGraph graph)
+    private async Task<CareerEnrollmentDetailDto> BuildDetailAsync(CareerEnrollment enrollment, PathwayGraph graph, CancellationToken token)
     {
         var completed = enrollment.CourseProgressRecords.Where(x => x.CompletedAtUtc is not null).Select(x => x.CourseId).ToHashSet();
         var requiredIds = graph.Pathway.Levels.SelectMany(x => x.Courses).Where(x => x.IsRequired).Select(x => x.CourseId).Distinct().ToList();
-        var levels = graph.Pathway.Levels.OrderBy(x => x.Order).Select(level =>
+        var levels = new List<LearnerPathwayLevelDto>();
+        foreach (var level in graph.Pathway.Levels.OrderBy(x => x.Order))
         {
             var assignments = level.Courses.OrderBy(x => x.Order).Where(x => graph.Courses.ContainsKey(x.CourseId)).ToList();
-            var courses = assignments.Select(a => CourseSummary(enrollment, graph, level, a)).ToList();
+            var courses = new List<LearnerCourseProgressDto>();
+            foreach (var assignment in assignments) courses.Add(await CourseSummaryAsync(enrollment, graph, level, assignment, token));
             var required = assignments.Where(x => x.IsRequired).Select(x => x.CourseId).ToList();
             var relevant = required.Count > 0 ? required : assignments.Select(x => x.CourseId).ToList();
             var done = relevant.Count(x => completed.Contains(x));
-            return new LearnerPathwayLevelDto(level.Id, level.Name, level.Description, level.Order,
-                relevant.Count > 0 && done == relevant.Count, Percentage(done, relevant.Count), courses);
-        }).ToList();
+            levels.Add(new LearnerPathwayLevelDto(level.Id, level.Name, level.Description, level.Order,
+                relevant.Count > 0 && done == relevant.Count, Percentage(done, relevant.Count), courses));
+        }
         var completedRequired = requiredIds.Count(completed.Contains);
         return new(enrollment.Id, new(graph.Career.Id, graph.Career.Title, graph.Career.Slug),
             new(graph.Pathway.Id, graph.Pathway.Name, graph.Pathway.Version), enrollment.Status, enrollment.EnrolledAtUtc,
@@ -205,22 +208,23 @@ public sealed class LearningProgressService(ICareersityDbContext db, ICurrentUse
             Percentage(completedRequired, requiredIds.Count), completedRequired, requiredIds.Count, levels);
     }
 
-    private static LearnerCourseProgressDto CourseSummary(CareerEnrollment enrollment, PathwayGraph graph, PathwayLevel level, PathwayLevelCourse assignment)
+    private async Task<LearnerCourseProgressDto> CourseSummaryAsync(CareerEnrollment enrollment, PathwayGraph graph, PathwayLevel level, PathwayLevelCourse assignment, CancellationToken token)
     {
         var course = graph.Courses[assignment.CourseId]; var progress = enrollment.CourseProgressRecords.SingleOrDefault(x => x.CourseId == course.Id);
         var required = course.Lessons.Where(x => x.IsRequired).Select(x => x.Id).ToList();
         var completed = progress?.LessonProgressRecords.Where(x => x.CompletedAtUtc is not null).Select(x => x.LessonId).ToHashSet() ?? [];
+        var metrics = await RequirementMetricsAsync(course.Id, progress, required.Count, required.Count(completed.Contains), token);
         return new(course.Id, course.Title, course.Slug, course.Difficulty, course.EstimatedDurationMinutes, assignment.Order,
             assignment.IsRequired, Availability(enrollment, graph, level, course), progress is not null, progress?.CompletedAtUtc is not null,
-            Percentage(required.Count(completed.Contains), required.Count), completed.Count(x => required.Contains(x)), required.Count,
-            progress?.StartedAtUtc, progress?.CompletedAtUtc);
+            metrics.Percentage, completed.Count(x => required.Contains(x)), required.Count,
+            progress?.StartedAtUtc, progress?.CompletedAtUtc, metrics.CompletedResources, metrics.RequiredResources);
     }
 
     private async Task<LearnerCourseDetailDto> BuildCourseDetailAsync(CareerEnrollment enrollment, PathwayGraph graph, Guid courseId, CancellationToken token)
     {
         var pair = graph.Pathway.Levels.SelectMany(level => level.Courses.Select(a => (Level: level, Assignment: a))).SingleOrDefault(x => x.Assignment.CourseId == courseId);
         if (pair.Assignment is null || !graph.Courses.TryGetValue(courseId, out var course)) throw new NotFoundException("Course was not found in this enrollment.");
-        var summary = CourseSummary(enrollment, graph, pair.Level, pair.Assignment); var progress = enrollment.CourseProgressRecords.SingleOrDefault(x => x.CourseId == courseId);
+        var summary = await CourseSummaryAsync(enrollment, graph, pair.Level, pair.Assignment, token); var progress = enrollment.CourseProgressRecords.SingleOrDefault(x => x.CourseId == courseId);
         var prerequisites = await (from relation in db.CoursePrerequisites.AsNoTracking() join prerequisite in db.Courses.AsNoTracking() on relation.PrerequisiteCourseId equals prerequisite.Id
             where relation.CourseId == courseId select new CoursePrerequisiteDto(relation.Id, prerequisite.Id, prerequisite.Title, prerequisite.Slug, relation.IsRequired)).ToListAsync(token);
         var lessons = course.Lessons.OrderBy(x => x.Order).Select(x => LessonSummary(x, progress?.LessonProgressRecords.SingleOrDefault(p => p.LessonId == x.Id))).ToList();
@@ -228,9 +232,21 @@ public sealed class LearningProgressService(ICareersityDbContext db, ICurrentUse
             .OrderBy(x => x.Title).Select(x => new PublicProjectSummaryDto(x.Id, x.Title, x.Description, x.SubmissionType, x.EstimatedDurationMinutes)).ToListAsync(token);
         var assessments = await db.Assessments.AsNoTracking().Where(x => x.CourseId == courseId && x.Status == ContentStatus.Published)
             .OrderBy(x => x.Title).Select(x => new PublicAssessmentSummaryDto(x.Id, x.Title, x.Description, x.PassingScorePercentage, x.MaximumAttempts, x.Questions.Count, x.Questions.Sum(q => q.Points))).ToListAsync(token);
+        var externalResources = await (from a in db.CourseExternalResources.AsNoTracking()
+            join r in db.ExternalLearningResources.AsNoTracking() on a.ExternalLearningResourceId equals r.Id
+            join provider in db.LearningProviders.AsNoTracking() on r.LearningProviderId equals provider.Id
+            join i0 in db.Instructors.AsNoTracking() on r.InstructorId equals i0.Id into instructors from instructor in instructors.DefaultIfEmpty()
+            join ep0 in db.ExternalResourceProgressRecords.AsNoTracking().Where(x => progress != null && x.CourseProgressId == progress.Id) on a.Id equals ep0.CourseExternalResourceId into progresses from ep in progresses.DefaultIfEmpty()
+            where a.CourseId == courseId && r.Status == ContentStatus.Published orderby a.Order
+            select new Careersity.Application.ExternalLearning.Dtos.LearnerExternalResourceProgressDto(a.Id,r.Id,r.Title,r.Description,r.ResourceType,r.AccessType,r.Url,provider.Name,instructor==null?null:instructor.Name,a.Order,a.IsRequired,ep!=null,ep!=null&&ep.CompletedAtUtc!=null,ep==null?null:ep.StartedAtUtc,ep==null?null:ep.CompletedAtUtc,r.EstimatedDurationMinutes)).ToListAsync(token);
+        var requiredLessons = lessons.Count(x => x.IsRequired); var completedLessons = lessons.Count(x => x.IsRequired && x.IsCompleted);
+        var passedAssessments = progress is null ? 0 : await db.AssessmentAttempts.AsNoTracking().Where(x => x.CourseProgressId == progress.Id && x.Status == AssessmentAttemptStatus.Passed && db.Assessments.Any(a => a.Id == x.AssessmentId && a.Status == ContentStatus.Published)).Select(x => x.AssessmentId).Distinct().CountAsync(token);
+        var requiredResources = externalResources.Count(x => x.IsRequired); var completedResources = externalResources.Count(x => x.IsRequired && x.IsCompleted);
+        var totalRequirements = requiredLessons + assessments.Count + requiredResources; var completedRequirements = completedLessons + passedAssessments + completedResources;
+        var requirementPercentage = Percentage(completedRequirements, totalRequirements);
         return new(course.Id, course.Title, course.Slug, course.ShortDescription, course.DetailedDescription, course.Difficulty,
             course.EstimatedDurationMinutes, summary.AvailabilityStatus, summary.IsStarted, summary.IsCompleted,
-            summary.ProgressPercentage, prerequisites, lessons, projects, assessments);
+            requirementPercentage, prerequisites, lessons, projects, assessments, externalResources, completedResources, requiredResources);
     }
 
     private static LearnerLessonProgressDto LessonSummary(Lesson x, LessonProgress? p) => new(x.Id, x.Title, x.Slug, x.Summary,
@@ -239,6 +255,14 @@ public sealed class LearningProgressService(ICareersityDbContext db, ICurrentUse
         x.Content, x.ContentType, x.ExternalResourceUrl, x.EstimatedDurationMinutes, x.Order, x.IsRequired, p is not null,
         p?.CompletedAtUtc is not null, p?.StartedAtUtc, p?.CompletedAtUtc);
     private static decimal Percentage(int completed, int total) => total == 0 ? 0 : Math.Clamp(Math.Round(completed * 100m / total, 2), 0, 100);
+    private async Task<(decimal Percentage, int CompletedResources, int RequiredResources)> RequirementMetricsAsync(Guid courseId, CourseProgress? progress, int requiredLessons, int completedLessons, CancellationToken token)
+    {
+        var assessmentIds = await db.Assessments.AsNoTracking().Where(x => x.CourseId == courseId && x.Status == ContentStatus.Published).Select(x => x.Id).ToListAsync(token);
+        var passed = progress is null ? 0 : await db.AssessmentAttempts.AsNoTracking().Where(x => x.CourseProgressId == progress.Id && x.Status == AssessmentAttemptStatus.Passed && assessmentIds.Contains(x.AssessmentId)).Select(x => x.AssessmentId).Distinct().CountAsync(token);
+        var resourceIds = await (from a in db.CourseExternalResources.AsNoTracking() join r in db.ExternalLearningResources.AsNoTracking() on a.ExternalLearningResourceId equals r.Id where a.CourseId == courseId && a.IsRequired && r.Status == ContentStatus.Published select a.Id).ToListAsync(token);
+        var completedResources = progress is null ? 0 : await db.ExternalResourceProgressRecords.AsNoTracking().CountAsync(x => x.CourseProgressId == progress.Id && x.CompletedAtUtc != null && resourceIds.Contains(x.CourseExternalResourceId), token);
+        return (Percentage(completedLessons + passed + completedResources, requiredLessons + assessmentIds.Count + resourceIds.Count), completedResources, resourceIds.Count);
+    }
     private Guid UserId() => currentUser.IsAuthenticated && currentUser.UserId.HasValue ? currentUser.UserId.Value : throw new UnauthorizedException();
     private sealed record PathwayGraph(Career Career, CareerPathway Pathway, IReadOnlyDictionary<Guid, Course> Courses);
 }

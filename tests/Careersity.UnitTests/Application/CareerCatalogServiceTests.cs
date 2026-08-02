@@ -11,6 +11,7 @@ using Careersity.Domain.Identity;
 using Careersity.Domain.Assessments;
 using Careersity.Domain.Projects;
 using Careersity.Domain.Learning;
+using Careersity.Domain.LearningResources;
 using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
@@ -151,6 +152,11 @@ internal sealed class TestCatalogContext : DbContext, ICareersityDbContext
     public DbSet<AssessmentAttempt> AssessmentAttempts => Set<AssessmentAttempt>();
     public DbSet<AssessmentResponse> AssessmentResponses => Set<AssessmentResponse>();
     public DbSet<AssessmentResponseOption> AssessmentResponseOptions => Set<AssessmentResponseOption>();
+    public DbSet<LearningProvider> LearningProviders => Set<LearningProvider>();
+    public DbSet<Instructor> Instructors => Set<Instructor>();
+    public DbSet<ExternalLearningResource> ExternalLearningResources => Set<ExternalLearningResource>();
+    public DbSet<CourseExternalResource> CourseExternalResources => Set<CourseExternalResource>();
+    public DbSet<ExternalResourceProgress> ExternalResourceProgressRecords => Set<ExternalResourceProgress>();
     protected override void OnModelCreating(ModelBuilder builder)
     {
         builder.Entity<CareerPathway>().HasMany(x => x.Levels).WithOne().HasForeignKey(x => x.CareerPathwayId);
@@ -165,5 +171,6 @@ internal sealed class TestCatalogContext : DbContext, ICareersityDbContext
         builder.Entity<CourseProgress>().HasMany(x => x.LessonProgressRecords).WithOne().HasForeignKey(x => x.CourseProgressId);
         builder.Entity<AssessmentAttempt>().HasMany(x => x.Responses).WithOne().HasForeignKey(x => x.AssessmentAttemptId);
         builder.Entity<AssessmentResponse>().HasMany(x => x.SelectedOptions).WithOne().HasForeignKey(x => x.AssessmentResponseId);
+        builder.Entity<CourseProgress>().HasMany(x => x.ExternalResourceProgressRecords).WithOne().HasForeignKey(x => x.CourseProgressId);
     }
 }

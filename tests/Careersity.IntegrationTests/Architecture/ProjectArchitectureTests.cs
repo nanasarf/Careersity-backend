@@ -10,6 +10,7 @@ using Careersity.Application.LearningProgress.Dtos;
 using Careersity.Application.LearningProgress.Requests;
 using Careersity.Application.AssessmentAttempts.Dtos;
 using Careersity.Application.AssessmentAttempts.Requests;
+using Careersity.Application.ExternalLearning.Requests;
 using FluentAssertions;
 using Xunit;
 
@@ -144,6 +145,23 @@ public sealed class ProjectArchitectureTests
             .SelectMany(x => x.GetProperties()).Select(x => x.Name).Should().NotIntersectWith(forbidden);
         typeof(LearnerAssessmentResponseDto).GetProperties().Select(x => x.Name)
             .Should().NotContain(["CorrectAnswerId", "CorrectAnswerOptionIds", "AnswerKey"]);
+    }
+
+    [Fact]
+    public void ExternalLearningAuthorizationAndRequestBoundariesAreCorrect()
+    {
+        var api = typeof(Program).Assembly;
+        var admins = api.GetTypes().Where(x => x.Name.StartsWith("Admin", StringComparison.Ordinal) && x.Name.Contains("External", StringComparison.Ordinal) || x.Name is "AdminLearningProvidersController" or "AdminInstructorsController").ToArray();
+        admins.Should().NotBeEmpty(); admins.Should().OnlyContain(x => x.GetCustomAttributes(typeof(AuthorizeAttribute), true).Cast<AuthorizeAttribute>().Any(a => a.Policy == SecurityPolicies.AdministratorOnly));
+        var publicController = api.GetTypes().Single(x => x.Name == "PublicExternalLearningController"); publicController.GetCustomAttributes(typeof(AllowAnonymousAttribute), true).Should().NotBeEmpty();
+        var learner = api.GetTypes().Single(x => x.Name == "LearnerExternalResourcesController"); learner.GetCustomAttributes(typeof(AuthorizeAttribute), true).Should().NotBeEmpty(); learner.GetCustomAttributes(typeof(AllowAnonymousAttribute), true).Should().BeEmpty();
+        typeof(CreateLearningProviderRequest).Assembly.GetTypes().Where(x => x.Namespace == typeof(CreateLearningProviderRequest).Namespace).SelectMany(x => x.GetProperties()).Select(x => x.Name).Should().NotContain("UserId");
+    }
+
+    [Fact]
+    public void ExternalLearningIntroducesNoRemoteFetchingClient()
+    {
+        typeof(DependencyInjection).Assembly.GetTypes().Should().NotContain(x => (x.Namespace ?? string.Empty).Contains("ExternalLearning", StringComparison.Ordinal) && (x.Name.Contains("HttpClient", StringComparison.Ordinal) || x.Name.Contains("Scraper", StringComparison.Ordinal)));
     }
 
     [Fact]

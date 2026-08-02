@@ -18,6 +18,8 @@ public sealed class CourseProgressConfiguration : IEntityTypeConfiguration<Cours
         builder.HasOne<CareerEnrollment>().WithMany(x => x.CourseProgressRecords).HasForeignKey(x => x.CareerEnrollmentId).OnDelete(DeleteBehavior.Cascade);
         builder.HasOne<Course>().WithMany().HasForeignKey(x => x.CourseId).OnDelete(DeleteBehavior.Restrict);
         builder.HasMany(x => x.LessonProgressRecords).WithOne().HasForeignKey(x => x.CourseProgressId).OnDelete(DeleteBehavior.Cascade);
+        builder.HasMany(x => x.ExternalResourceProgressRecords).WithOne().HasForeignKey(x => x.CourseProgressId).OnDelete(DeleteBehavior.Cascade);
         builder.Navigation(x => x.LessonProgressRecords).UsePropertyAccessMode(PropertyAccessMode.Field);
+        builder.Navigation(x => x.ExternalResourceProgressRecords).UsePropertyAccessMode(PropertyAccessMode.Field);
     }
 }

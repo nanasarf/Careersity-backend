@@ -1,0 +1,7 @@
+using Careersity.Application.ExternalLearning.Services; using Microsoft.AspNetCore.Authorization; using Microsoft.AspNetCore.Mvc;
+namespace Careersity.Api.Controllers;
+[ApiController,AllowAnonymous,Tags("Public External Learning")]
+public sealed class PublicExternalLearningController(ILearningProviderService providers,IInstructorService instructors,IExternalLearningResourceService resources,ICourseExternalResourceService assignments):ControllerBase
+{
+ [HttpGet("api/learning-providers")]public async Task<IActionResult>Providers(CancellationToken t)=>Ok(await providers.ListPublishedAsync(t));[HttpGet("api/learning-providers/{slug}")]public async Task<IActionResult>Provider(string slug,CancellationToken t)=>Ok(await providers.GetPublishedAsync(slug,t));[HttpGet("api/learning-providers/{providerId:guid}/instructors")]public async Task<IActionResult>Instructors(Guid providerId,CancellationToken t)=>Ok(await instructors.ListPublishedAsync(providerId,t));[HttpGet("api/external-learning-resources")]public async Task<IActionResult>Resources(CancellationToken t)=>Ok(await resources.ListPublishedAsync(t));[HttpGet("api/external-learning-resources/{resourceId:guid}")]public async Task<IActionResult>Resource(Guid resourceId,CancellationToken t)=>Ok(await resources.GetPublishedAsync(resourceId,t));[HttpGet("api/courses/{courseSlug}/external-resources")]public async Task<IActionResult>Course(string courseSlug,CancellationToken t)=>Ok(await assignments.ListPublishedAsync(courseSlug,t));
+}

@@ -1,0 +1,11 @@
+using Careersity.Domain.Enums;
+
+namespace Careersity.Application.ExternalLearning.Dtos;
+
+public sealed record LearningProviderDto(Guid Id, string Name, string Slug, string? Description, string? WebsiteUrl, string? LogoUrl, ContentStatus Status, DateTimeOffset CreatedAtUtc, DateTimeOffset? UpdatedAtUtc);
+public sealed record InstructorDto(Guid Id, Guid LearningProviderId, string ProviderName, string Name, string? Title, string? Biography, string? ProfileUrl, ContentStatus Status, DateTimeOffset CreatedAtUtc, DateTimeOffset? UpdatedAtUtc);
+public sealed record ExternalLearningResourceListItemDto(Guid Id, string Title, ExternalResourceType ResourceType, ResourceAccessType AccessType, string Url, Guid ProviderId, string ProviderName, Guid? InstructorId, string? InstructorName, int? EstimatedDurationMinutes, DateTimeOffset? LastReviewedAtUtc, ContentStatus Status);
+public sealed record ExternalLearningResourceDetailDto(Guid Id, string Title, string? Description, ExternalResourceType ResourceType, ResourceAccessType AccessType, string Url, string? SourceLabel, LearningProviderDto Provider, InstructorDto? Instructor, int? EstimatedDurationMinutes, DateTimeOffset? LastReviewedAtUtc, ContentStatus Status, DateTimeOffset CreatedAtUtc, DateTimeOffset? UpdatedAtUtc);
+public sealed record CourseExternalResourceDto(Guid AssignmentId, Guid CourseId, Guid ResourceId, string Title, string? Description, ExternalResourceType ResourceType, ResourceAccessType AccessType, string Url, string ProviderName, string? InstructorName, int Order, bool IsRequired, string? Notes, int? EstimatedDurationMinutes);
+public sealed record PublicExternalResourceDto(Guid ResourceId, string Title, string? Description, ExternalResourceType ResourceType, ResourceAccessType AccessType, string Url, string? SourceLabel, string ProviderName, string? InstructorName, int? EstimatedDurationMinutes, int Order, bool IsRequired);
+public sealed record LearnerExternalResourceProgressDto(Guid AssignmentId, Guid ResourceId, string Title, string? Description, ExternalResourceType ResourceType, ResourceAccessType AccessType, string Url, string ProviderName, string? InstructorName, int Order, bool IsRequired, bool IsStarted, bool IsCompleted, DateTimeOffset? StartedAtUtc, DateTimeOffset? CompletedAtUtc, int? EstimatedDurationMinutes);

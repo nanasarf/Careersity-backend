@@ -28,6 +28,7 @@ public sealed class PersistenceModelTests
             typeof(CoursePrerequisite), typeof(CourseSkill), typeof(Lesson), typeof(Assessment),
             typeof(Question), typeof(AnswerOption), typeof(Project), typeof(User), typeof(RefreshToken)
             , typeof(Careersity.Domain.Learning.AssessmentAttempt), typeof(Careersity.Domain.Learning.AssessmentResponse), typeof(Careersity.Domain.Learning.AssessmentResponseOption)
+            , typeof(Careersity.Domain.LearningResources.LearningProvider), typeof(Careersity.Domain.LearningResources.Instructor), typeof(Careersity.Domain.LearningResources.ExternalLearningResource), typeof(Careersity.Domain.LearningResources.CourseExternalResource), typeof(Careersity.Domain.Learning.ExternalResourceProgress)
         };
 
         foreach (var type in expectedTypes)

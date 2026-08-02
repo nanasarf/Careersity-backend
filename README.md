@@ -315,3 +315,43 @@ Questions award all points or zero: single-choice and true/false require their o
 Course completion now requires every required lesson completed and every currently Published course assessment passed. Draft/Archived assessments and projects do not affect completion. Passing the final requirement recalculates course and enrollment completion.
 
 Current limitations: choice-based questions only; no partial credit, written responses, timers, manual grading, project submissions, certificates, recommendations, notifications, or frontend.
+## External learning resources
+
+Careersity curates links and limited descriptive metadata for learning material owned and hosted by external educators, universities, and providers. It does not download, mirror, scrape, execute, or claim ownership of third-party content.
+
+Administrators manage providers, instructors, and reusable URL resources through the `Admin External Learning` Swagger group. Supported resource types include lecture videos, playlists, readings, exercises, external assessments, assignments, answer guides, course websites, certificate opportunities, datasets, software tools, and other links. Access is described as Free, FreeWithAccount, AuditFree, Paid, InstitutionRestricted, or Unknown.
+
+Providers, instructors, and resources use Draft → Published → Archived lifecycle states. Published instructional metadata is immutable. A Published resource may update only its server-generated `LastReviewedAtUtc` maintenance timestamp. Instructor publication requires a Published provider; resource publication requires a Published provider and, when assigned, a Published instructor belonging to that provider.
+
+Draft courses can assign resources with an order, required flag, and optional notes. Assignments are immutable after course publication, and course publication requires every assignment to reference a Published resource. Public and learner endpoints expose only Published resources with attribution and the original URL.
+
+Required resources use learner self-confirmation. Starting and completing are idempotent; completion never fetches or verifies the remote content. An `ExternalAssessment` is a URL resource and is not a native Careersity `Assessment`: it creates no attempt and receives no automatic grade.
+
+Course progress is a simple count of completed required requirements divided by total required requirements. Requirements are required lessons, Published native assessments, and required Published external resources. Optional, Draft, and Archived resources do not block completion. If a required resource is archived before completion, it stops being a current requirement; historical progress remains stored.
+
+Public routes:
+
+```text
+GET /api/learning-providers
+GET /api/learning-providers/{slug}
+GET /api/learning-providers/{providerId}/instructors
+GET /api/external-learning-resources
+GET /api/external-learning-resources/{resourceId}
+GET /api/courses/{courseSlug}/external-resources
+```
+
+Administrator routes are under `/api/admin/learning-providers`, `/api/admin/instructors`, `/api/admin/external-learning-resources`, and `/api/admin/courses/{courseId}/external-resources`. Learner routes are under `/api/me/career-enrollments/{enrollmentId}/courses/{courseId}/external-resources` with `/start` and `/complete` actions.
+
+PowerShell request examples:
+
+```powershell
+$provider = @{ name='Example University'; slug='example-university'; description='External provider'; websiteUrl='https://example.edu'; logoUrl=$null } | ConvertTo-Json
+$resource = @{ learningProviderId='<provider-guid>'; instructorId=$null; title='Example lecture'; description='Hosted by the provider'; resourceType='LectureVideo'; accessType='Free'; url='https://example.edu/lecture'; sourceLabel='Example University'; estimatedDurationMinutes=45 } | ConvertTo-Json
+$assignment = @{ externalLearningResourceId='<resource-guid>'; order=0; isRequired=$true; notes='Complete the hosted lecture.' } | ConvertTo-Json
+Invoke-RestMethod -Method Post -Uri "$baseUrl/api/admin/learning-providers" -Headers @{ Authorization="Bearer $adminToken" } -ContentType 'application/json' -Body $provider
+Invoke-RestMethod -Method Post -Uri "$baseUrl/api/admin/external-learning-resources" -Headers @{ Authorization="Bearer $adminToken" } -ContentType 'application/json' -Body $resource
+Invoke-RestMethod -Method Post -Uri "$baseUrl/api/admin/courses/$courseId/external-resources" -Headers @{ Authorization="Bearer $adminToken" } -ContentType 'application/json' -Body $assignment
+Invoke-RestMethod -Method Post -Uri "$baseUrl/api/me/career-enrollments/$enrollmentId/courses/$courseId/external-resources/$assignmentId/complete" -Headers @{ Authorization="Bearer $learnerToken" }
+```
+
+Current limitations include no provider APIs or OAuth, URL synchronization, scraping, availability jobs, automatic remote completion verification, file/video hosting, Careersity-issued certificates, project review, notifications, payments, recommendations, or frontend.

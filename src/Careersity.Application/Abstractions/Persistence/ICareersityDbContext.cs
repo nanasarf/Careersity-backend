@@ -5,6 +5,7 @@ using Careersity.Domain.Identity;
 using Careersity.Domain.Assessments;
 using Careersity.Domain.Projects;
 using Careersity.Domain.Learning;
+using Careersity.Domain.LearningResources;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 
@@ -35,6 +36,11 @@ public interface ICareersityDbContext
     DbSet<AssessmentAttempt> AssessmentAttempts { get; }
     DbSet<AssessmentResponse> AssessmentResponses { get; }
     DbSet<AssessmentResponseOption> AssessmentResponseOptions { get; }
+    DbSet<LearningProvider> LearningProviders { get; }
+    DbSet<Instructor> Instructors { get; }
+    DbSet<ExternalLearningResource> ExternalLearningResources { get; }
+    DbSet<CourseExternalResource> CourseExternalResources { get; }
+    DbSet<ExternalResourceProgress> ExternalResourceProgressRecords { get; }
     DatabaseFacade Database { get; }
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 }

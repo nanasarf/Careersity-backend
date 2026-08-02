@@ -22,9 +22,15 @@ public sealed class CourseCompletionEvaluator(ICareersityDbContext db) : ICourse
         var publishedAssessmentIds = await db.Assessments.AsNoTracking().Where(x => x.CourseId == progress.CourseId && x.Status == ContentStatus.Published).Select(x => x.Id).ToListAsync(token);
         var passedAssessmentIds = await db.AssessmentAttempts.AsNoTracking().Where(x => x.CourseProgressId == progress.Id && x.Status == AssessmentAttemptStatus.Passed).Select(x => x.AssessmentId).ToListAsync(token);
         var assessmentsComplete = publishedAssessmentIds.All(passedAssessmentIds.Contains);
-        if (!lessonsComplete || !assessmentsComplete)
+        var requiredResourceIds = await (from assignment in db.CourseExternalResources.AsNoTracking()
+            join resource in db.ExternalLearningResources.AsNoTracking() on assignment.ExternalLearningResourceId equals resource.Id
+            where assignment.CourseId == progress.CourseId && assignment.IsRequired && resource.Status == ContentStatus.Published
+            select assignment.Id).ToListAsync(token);
+        var completedResourceIds = await db.ExternalResourceProgressRecords.AsNoTracking().Where(x => x.CourseProgressId == progress.Id && x.CompletedAtUtc != null).Select(x => x.CourseExternalResourceId).ToListAsync(token);
+        var resourcesComplete = requiredResourceIds.All(completedResourceIds.Contains);
+        if (!lessonsComplete || !assessmentsComplete || !resourcesComplete)
         {
-            if (throwIfIncomplete) throw new ConflictException(!lessonsComplete ? "All required lessons must be completed first." : "All published assessments must be passed first.");
+            if (throwIfIncomplete) throw new ConflictException(!lessonsComplete ? "All required lessons must be completed first." : !assessmentsComplete ? "All published assessments must be passed first." : "All required published external resources must be completed first.");
             return false;
         }
         progress.Complete(); return true;

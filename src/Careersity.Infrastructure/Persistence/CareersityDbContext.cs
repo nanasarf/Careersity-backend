@@ -5,6 +5,7 @@ using Careersity.Domain.Projects;
 using Careersity.Domain.Skills;
 using Careersity.Domain.Identity;
 using Careersity.Domain.Learning;
+using Careersity.Domain.LearningResources;
 using Microsoft.EntityFrameworkCore;
 using Careersity.Application.Abstractions.Persistence;
 using Careersity.Application.Common.Exceptions;
@@ -38,6 +39,11 @@ public sealed class CareersityDbContext(DbContextOptions<CareersityDbContext> op
     public DbSet<AssessmentAttempt> AssessmentAttempts => Set<AssessmentAttempt>();
     public DbSet<AssessmentResponse> AssessmentResponses => Set<AssessmentResponse>();
     public DbSet<AssessmentResponseOption> AssessmentResponseOptions => Set<AssessmentResponseOption>();
+    public DbSet<LearningProvider> LearningProviders => Set<LearningProvider>();
+    public DbSet<Instructor> Instructors => Set<Instructor>();
+    public DbSet<ExternalLearningResource> ExternalLearningResources => Set<ExternalLearningResource>();
+    public DbSet<CourseExternalResource> CourseExternalResources => Set<CourseExternalResource>();
+    public DbSet<ExternalResourceProgress> ExternalResourceProgressRecords => Set<ExternalResourceProgress>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

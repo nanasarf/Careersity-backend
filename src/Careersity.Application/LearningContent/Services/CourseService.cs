@@ -38,6 +38,9 @@ public sealed class CourseService(ICareersityDbContext db) : ICourseService
         var prerequisiteIds = course.Prerequisites.Select(x => x.PrerequisiteCourseId).ToArray();
         if (await db.Courses.CountAsync(x => prerequisiteIds.Contains(x.Id) && x.Status == ContentStatus.Published, cancellationToken) != prerequisiteIds.Length)
             throw new ConflictException("Every prerequisite course must be published before the course.");
+        var assignedResourceIds = await db.CourseExternalResources.AsNoTracking().Where(x => x.CourseId == id).Select(x => x.ExternalLearningResourceId).ToListAsync(cancellationToken);
+        if (await db.ExternalLearningResources.AsNoTracking().CountAsync(x => assignedResourceIds.Contains(x.Id) && x.Status == ContentStatus.Published, cancellationToken) != assignedResourceIds.Count)
+            throw new ConflictException("Every assigned external resource must be published before the course.");
         if (course.Lessons.Select(x => x.Order).Distinct().Count() != course.Lessons.Count ||
             course.Lessons.Select(x => x.Slug).Distinct(StringComparer.OrdinalIgnoreCase).Count() != course.Lessons.Count)
             throw new ConflictException("Lesson order and slug must be unique within the course.");
