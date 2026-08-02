@@ -17,7 +17,7 @@ public sealed class LearningProgressServiceTests
     public async Task CompleteRequiredLessonsUnlocksLaterLevelAndCompletesEnrollment()
     {
         await using var db = TestCatalogContext.Create(); var setup = await CreatePathwayAsync(db);
-        var service = new LearningProgressService(db, new TestCurrentUser(setup.UserId));
+        var service = CreateService(db, setup.UserId);
         var enrollment = await service.EnrollAsync(new(setup.Career.Id), default);
         enrollment.Levels.ElementAt(0).Courses.Single().AvailabilityStatus.Should().Be(CourseAvailabilityStatus.Available);
         enrollment.Levels.ElementAt(1).Courses.Single().AvailabilityStatus.Should().Be(CourseAvailabilityStatus.Locked);
@@ -37,14 +37,14 @@ public sealed class LearningProgressServiceTests
     public async Task PauseOwnershipDuplicateAndReenrollmentRulesAreEnforced()
     {
         await using var db = TestCatalogContext.Create(); var setup = await CreatePathwayAsync(db);
-        var service = new LearningProgressService(db, new TestCurrentUser(setup.UserId));
+        var service = CreateService(db, setup.UserId);
         var enrollment = await service.EnrollAsync(new(setup.Career.Id), default);
         await FluentActions.Awaiting(() => service.EnrollAsync(new(setup.Career.Id), default)).Should().ThrowAsync<ConflictException>();
         await service.PauseAsync(enrollment.Id, default);
         await FluentActions.Awaiting(() => service.StartCourseAsync(enrollment.Id, setup.First.Id, default)).Should().ThrowAsync<Careersity.Domain.Exceptions.DomainException>();
         await service.ResumeAsync(enrollment.Id, default); await service.WithdrawAsync(enrollment.Id, default);
         var replacement = await service.EnrollAsync(new(setup.Career.Id), default); replacement.Id.Should().NotBe(enrollment.Id);
-        var stranger = new LearningProgressService(db, new TestCurrentUser(Guid.NewGuid()));
+        var stranger = CreateService(db, Guid.NewGuid());
         await FluentActions.Awaiting(() => stranger.GetAsync(replacement.Id, default)).Should().ThrowAsync<NotFoundException>();
     }
 
@@ -52,7 +52,7 @@ public sealed class LearningProgressServiceTests
     public async Task ExplicitCompletionRejectsMissingRequiredLessonsAndOptionalContentDoesNotReduceProgress()
     {
         await using var db = TestCatalogContext.Create(); var setup = await CreatePathwayAsync(db);
-        var service = new LearningProgressService(db, new TestCurrentUser(setup.UserId)); var enrollment = await service.EnrollAsync(new(setup.Career.Id), default);
+        var service = CreateService(db, setup.UserId); var enrollment = await service.EnrollAsync(new(setup.Career.Id), default);
         await FluentActions.Awaiting(() => service.CompleteCourseAsync(enrollment.Id, setup.First.Id, default)).Should().ThrowAsync<ConflictException>();
         await service.CompleteLessonAsync(enrollment.Id, setup.First.Id, setup.First.Lessons.Single(x => x.IsRequired).Id, default);
         var course = await service.GetCourseAsync(enrollment.Id, setup.First.Id, default);
@@ -75,6 +75,9 @@ public sealed class LearningProgressServiceTests
         db.AddRange(category, career, first, second, pathway); db.Lessons.AddRange(required, optional, secondLesson);
         await db.SaveChangesAsync(); return (Guid.NewGuid(), career, first, second);
     }
+
+    private static LearningProgressService CreateService(TestCatalogContext db, Guid userId) =>
+        new(db, new TestCurrentUser(userId), new CourseCompletionEvaluator(db));
 
     private sealed class TestCurrentUser(Guid id) : ICurrentUser
     { public Guid? UserId => id; public string? Email => "learner@example.test"; public UserRole? Role => UserRole.Learner; public bool IsAuthenticated => true; }

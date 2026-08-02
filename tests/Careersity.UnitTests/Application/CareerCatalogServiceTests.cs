@@ -148,6 +148,9 @@ internal sealed class TestCatalogContext : DbContext, ICareersityDbContext
     public DbSet<User> Users => Set<User>(); public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
     public DbSet<CareerEnrollment> CareerEnrollments => Set<CareerEnrollment>(); public DbSet<CourseProgress> CourseProgressRecords => Set<CourseProgress>();
     public DbSet<LessonProgress> LessonProgressRecords => Set<LessonProgress>();
+    public DbSet<AssessmentAttempt> AssessmentAttempts => Set<AssessmentAttempt>();
+    public DbSet<AssessmentResponse> AssessmentResponses => Set<AssessmentResponse>();
+    public DbSet<AssessmentResponseOption> AssessmentResponseOptions => Set<AssessmentResponseOption>();
     protected override void OnModelCreating(ModelBuilder builder)
     {
         builder.Entity<CareerPathway>().HasMany(x => x.Levels).WithOne().HasForeignKey(x => x.CareerPathwayId);
@@ -160,5 +163,7 @@ internal sealed class TestCatalogContext : DbContext, ICareersityDbContext
         builder.Entity<Question>().HasMany(x => x.AnswerOptions).WithOne().HasForeignKey(x => x.QuestionId);
         builder.Entity<CareerEnrollment>().HasMany(x => x.CourseProgressRecords).WithOne().HasForeignKey(x => x.CareerEnrollmentId);
         builder.Entity<CourseProgress>().HasMany(x => x.LessonProgressRecords).WithOne().HasForeignKey(x => x.CourseProgressId);
+        builder.Entity<AssessmentAttempt>().HasMany(x => x.Responses).WithOne().HasForeignKey(x => x.AssessmentAttemptId);
+        builder.Entity<AssessmentResponse>().HasMany(x => x.SelectedOptions).WithOne().HasForeignKey(x => x.AssessmentResponseId);
     }
 }

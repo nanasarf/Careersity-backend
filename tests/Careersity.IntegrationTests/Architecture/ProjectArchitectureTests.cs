@@ -8,6 +8,8 @@ using Careersity.Api.Infrastructure;
 using Careersity.Application.CurriculumActivities.Dtos;
 using Careersity.Application.LearningProgress.Dtos;
 using Careersity.Application.LearningProgress.Requests;
+using Careersity.Application.AssessmentAttempts.Dtos;
+using Careersity.Application.AssessmentAttempts.Requests;
 using FluentAssertions;
 using Xunit;
 
@@ -122,6 +124,26 @@ public sealed class ProjectArchitectureTests
         var forbidden = new[] { "UserId", "Password", "PasswordHash", "Token", "TokenHash", "IsCorrect", "AnswerKey" };
         var types = typeof(CareerEnrollmentDetailDto).Assembly.GetTypes().Where(x => x.Namespace == typeof(CareerEnrollmentDetailDto).Namespace);
         types.SelectMany(x => x.GetProperties()).Select(x => x.Name).Should().NotIntersectWith(forbidden);
+    }
+
+    [Fact]
+    public void LearnerAssessmentBoundaryIsAuthenticatedAndRequestsNeverAcceptUserId()
+    {
+        var controller = typeof(Program).Assembly.GetTypes().Single(x => x.Name == "LearnerAssessmentsController");
+        controller.GetCustomAttributes(typeof(AuthorizeAttribute), true).Should().ContainSingle();
+        controller.GetCustomAttributes(typeof(AllowAnonymousAttribute), true).Should().BeEmpty();
+        new[] { typeof(SaveAssessmentResponseRequest), typeof(SaveAssessmentResponsesRequest), typeof(SubmitAssessmentAttemptRequest) }
+            .SelectMany(x => x.GetProperties()).Select(x => x.Name).Should().NotContain("UserId");
+    }
+
+    [Fact]
+    public void AssessmentStartContractsAndLearnerDtosNeverExposeAnswerKeys()
+    {
+        var forbidden = new[] { "IsCorrect", "CorrectAnswer", "CorrectAnswerId", "CorrectAnswerOptionIds", "AnswerKey", "PasswordHash", "TokenHash" };
+        new[] { typeof(AssessmentAttemptStartDto), typeof(LearnerAssessmentQuestionDto), typeof(LearnerAnswerOptionDto), typeof(LearnerAssessmentSummaryDto) }
+            .SelectMany(x => x.GetProperties()).Select(x => x.Name).Should().NotIntersectWith(forbidden);
+        typeof(LearnerAssessmentResponseDto).GetProperties().Select(x => x.Name)
+            .Should().NotContain(["CorrectAnswerId", "CorrectAnswerOptionIds", "AnswerKey"]);
     }
 
     [Fact]

@@ -35,6 +35,9 @@ public sealed class CareersityDbContext(DbContextOptions<CareersityDbContext> op
     public DbSet<CareerEnrollment> CareerEnrollments => Set<CareerEnrollment>();
     public DbSet<CourseProgress> CourseProgressRecords => Set<CourseProgress>();
     public DbSet<LessonProgress> LessonProgressRecords => Set<LessonProgress>();
+    public DbSet<AssessmentAttempt> AssessmentAttempts => Set<AssessmentAttempt>();
+    public DbSet<AssessmentResponse> AssessmentResponses => Set<AssessmentResponse>();
+    public DbSet<AssessmentResponseOption> AssessmentResponseOptions => Set<AssessmentResponseOption>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -51,6 +54,10 @@ public sealed class CareersityDbContext(DbContextOptions<CareersityDbContext> op
         catch (DbUpdateException exception) when (exception.InnerException is PostgresException { SqlState: PostgresErrorCodes.UniqueViolation })
         {
             throw new ConflictException("The operation conflicts with an existing record.");
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            throw new ConflictException("The record was changed by another request. Retry the operation.");
         }
     }
 }

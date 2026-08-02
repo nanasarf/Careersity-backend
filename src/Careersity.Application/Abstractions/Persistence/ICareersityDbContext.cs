@@ -32,6 +32,9 @@ public interface ICareersityDbContext
     DbSet<CareerEnrollment> CareerEnrollments { get; }
     DbSet<CourseProgress> CourseProgressRecords { get; }
     DbSet<LessonProgress> LessonProgressRecords { get; }
+    DbSet<AssessmentAttempt> AssessmentAttempts { get; }
+    DbSet<AssessmentResponse> AssessmentResponses { get; }
+    DbSet<AssessmentResponseOption> AssessmentResponseOptions { get; }
     DatabaseFacade Database { get; }
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 }

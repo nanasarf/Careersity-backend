@@ -5,6 +5,7 @@ using Careersity.Application.Identity.Services;
 using Careersity.Application.LearningContent.Services;
 using Careersity.Application.CurriculumActivities.Services;
 using Careersity.Application.LearningProgress.Services;
+using Careersity.Application.AssessmentAttempts.Services;
 
 namespace Careersity.Application;
 
@@ -31,6 +32,8 @@ public static class DependencyInjection
         services.AddScoped<IAnswerOptionService, AnswerOptionService>();
         services.AddScoped<IProjectService, ProjectService>();
         services.AddScoped<ILearningProgressService, LearningProgressService>();
+        services.AddScoped<ICourseCompletionEvaluator, CourseCompletionEvaluator>();
+        services.AddScoped<IAssessmentAttemptService, AssessmentAttemptService>();
 
         return services;
     }

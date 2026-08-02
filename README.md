@@ -278,3 +278,40 @@ The schema covers learning-content structure plus Users and hashed RefreshTokens
 ## Current status
 
 This repository contains the Domain and EF Core persistence foundations, career catalog vertical slice, and JWT identity/authentication slice. Committed connection strings and JWT signing keys are empty placeholders.
+## Learner assessment attempts
+
+Authenticated users can list published assessments for an enrolled, started course, start or resume an in-progress attempt, autosave selected answer-option IDs, submit for automatic grading, and review their own attempt history. Attempts belong to the current JWT user; the API never accepts a user ID. Cross-user and mismatched enrollment/course/assessment/attempt combinations return `404`.
+
+The lifecycle is `InProgress` → `Passed` or `Failed`. Starting is idempotent while an in-progress attempt exists. A passed assessment cannot be retaken. `MaximumAttempts` counts both active and completed attempts; `null` allows unlimited attempts, and failed attempts may be retried while capacity remains.
+
+Routes (all require a bearer token):
+
+```text
+GET  /api/me/career-enrollments/{enrollmentId}/courses/{courseId}/assessments
+POST /api/me/career-enrollments/{enrollmentId}/courses/{courseId}/assessments/{assessmentId}/attempts
+GET  /api/me/career-enrollments/{enrollmentId}/courses/{courseId}/assessments/{assessmentId}/attempts
+GET  /api/me/career-enrollments/{enrollmentId}/courses/{courseId}/assessments/{assessmentId}/attempts/{attemptId}
+PUT  /api/me/career-enrollments/{enrollmentId}/courses/{courseId}/assessments/{assessmentId}/attempts/{attemptId}/responses
+POST /api/me/career-enrollments/{enrollmentId}/courses/{courseId}/assessments/{assessmentId}/attempts/{attemptId}/submit
+```
+
+Start has no request body. Autosave permits partial progress:
+
+```powershell
+$body = @{ responses = @(@{ questionId = '<question-guid>'; selectedAnswerOptionIds = @('<option-guid>') }) } | ConvertTo-Json -Depth 5
+Invoke-RestMethod -Method Put -Uri "$baseUrl/api/me/career-enrollments/$enrollmentId/courses/$courseId/assessments/$assessmentId/attempts/$attemptId/responses" -Headers @{ Authorization = "Bearer $accessToken" } -ContentType 'application/json' -Body $body
+```
+
+Submission can use saved responses (`{}`) or atomically apply a final response batch in the same shape:
+
+```powershell
+Invoke-RestMethod -Method Post -Uri "$baseUrl/api/me/career-enrollments/$enrollmentId/courses/$courseId/assessments/$assessmentId/attempts/$attemptId/submit" -Headers @{ Authorization = "Bearer $accessToken" } -ContentType 'application/json' -Body $body
+```
+
+A completed result contains the score, points, pass/fail state, and per-response `isCorrect`/`pointsAwarded`. It never contains correct option IDs. Start and in-progress payloads expose prompts and choices but no correctness or answer-key metadata.
+
+Questions award all points or zero: single-choice and true/false require their one correct option; multiple-choice requires an exact set match with no omission or extra choice. The score is `pointsEarned / totalPoints × 100`, rounded to two decimals, and the passing threshold is inclusive.
+
+Course completion now requires every required lesson completed and every currently Published course assessment passed. Draft/Archived assessments and projects do not affect completion. Passing the final requirement recalculates course and enrollment completion.
+
+Current limitations: choice-based questions only; no partial credit, written responses, timers, manual grading, project submissions, certificates, recommendations, notifications, or frontend.

@@ -27,6 +27,7 @@ public sealed class PersistenceModelTests
             typeof(PathwayLevel), typeof(PathwayLevelCourse), typeof(Skill), typeof(Course),
             typeof(CoursePrerequisite), typeof(CourseSkill), typeof(Lesson), typeof(Assessment),
             typeof(Question), typeof(AnswerOption), typeof(Project), typeof(User), typeof(RefreshToken)
+            , typeof(Careersity.Domain.Learning.AssessmentAttempt), typeof(Careersity.Domain.Learning.AssessmentResponse), typeof(Careersity.Domain.Learning.AssessmentResponseOption)
         };
 
         foreach (var type in expectedTypes)

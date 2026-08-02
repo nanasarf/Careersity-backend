@@ -14,7 +14,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Careersity.Application.LearningProgress.Services;
 
-public sealed class LearningProgressService(ICareersityDbContext db, ICurrentUser currentUser) : ILearningProgressService
+public sealed class LearningProgressService(ICareersityDbContext db, ICurrentUser currentUser, ICourseCompletionEvaluator completionEvaluator) : ILearningProgressService
 {
     public async Task<CareerEnrollmentDetailDto> EnrollAsync(EnrollInCareerRequest request, CancellationToken token)
     {
@@ -95,7 +95,7 @@ public sealed class LearningProgressService(ICareersityDbContext db, ICurrentUse
         var graph = await LoadGraphAsync(enrollment, token); EnsurePublished(graph, courseId); EnsureAvailable(enrollment, graph, courseId);
         var progress = enrollment.CourseProgressRecords.SingleOrDefault(x => x.CourseId == courseId);
         if (progress is null) { progress = enrollment.AddCourseProgress(courseId); db.CourseProgressRecords.Add(progress); }
-        CompleteCourseIfEligible(progress, graph.Courses[courseId], true);
+        await completionEvaluator.CompleteIfEligibleAsync(progress, true, token);
         CompleteEnrollmentIfEligible(enrollment, graph);
         await db.SaveChangesAsync(token); await transaction.CommitAsync(token); return await GetCourseAsync(enrollmentId, courseId, token);
     }
@@ -125,7 +125,7 @@ public sealed class LearningProgressService(ICareersityDbContext db, ICurrentUse
         var lessonProgress = courseProgress.LessonProgressRecords.SingleOrDefault(x => x.LessonId == lessonId);
         if (lessonProgress is null) { lessonProgress = courseProgress.AddLessonProgress(lessonId); db.LessonProgressRecords.Add(lessonProgress); }
         else lessonProgress.RecordAccess();
-        if (complete) { lessonProgress.Complete(); CompleteCourseIfEligible(courseProgress, course, false); CompleteEnrollmentIfEligible(enrollment, graph); }
+        if (complete) { lessonProgress.Complete(); await completionEvaluator.CompleteIfEligibleAsync(courseProgress, false, token); CompleteEnrollmentIfEligible(enrollment, graph); }
         await db.SaveChangesAsync(token); await transaction.CommitAsync(token); return LessonDetail(lesson, lessonProgress);
     }
 
@@ -175,16 +175,6 @@ public sealed class LearningProgressService(ICareersityDbContext db, ICurrentUse
         if (earlierRequired.Any(x => !completed.Contains(x))) return CourseAvailabilityStatus.Locked;
         if (course.Prerequisites.Where(x => x.IsRequired).Any(x => !completed.Contains(x.PrerequisiteCourseId))) return CourseAvailabilityStatus.Locked;
         return CourseAvailabilityStatus.Available;
-    }
-
-    private static void CompleteCourseIfEligible(CourseProgress progress, Course course, bool requireEligible)
-    {
-        if (progress.CompletedAtUtc is not null) return;
-        var required = course.Lessons.Where(x => x.IsRequired).Select(x => x.Id).ToList();
-        var completed = progress.LessonProgressRecords.Where(x => x.CompletedAtUtc is not null).Select(x => x.LessonId).ToHashSet();
-        if (required.Count == 0 || required.Any(x => !completed.Contains(x)))
-        { if (requireEligible) throw new ConflictException("All required lessons must be completed first."); return; }
-        progress.Complete();
     }
 
     private static void CompleteEnrollmentIfEligible(CareerEnrollment enrollment, PathwayGraph graph)
