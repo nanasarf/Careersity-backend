@@ -165,6 +165,40 @@ Invoke-RestMethod -Uri "http://localhost:5080/api/courses/$courseSlug/projects/$
 
 Assessment attempts, user answers, grading history, project submissions, reviewer feedback, enrollment, and progress tracking are not implemented.
 
+## Learner career enrollment and progress
+
+Authenticated users can enroll in the current primary Published pathway for a Published career and track their own lesson-based progress. Existing enrollments remain pinned to the pathway version selected at enrollment time.
+
+```text
+POST /api/me/career-enrollments
+GET  /api/me/career-enrollments
+GET  /api/me/career-enrollments/{enrollmentId}
+POST /api/me/career-enrollments/{enrollmentId}/pause
+POST /api/me/career-enrollments/{enrollmentId}/resume
+POST /api/me/career-enrollments/{enrollmentId}/withdraw
+GET|POST /api/me/career-enrollments/{enrollmentId}/courses/{courseId}[/start|/complete]
+GET|POST /api/me/career-enrollments/{enrollmentId}/courses/{courseId}/lessons/{lessonId}[/start|/complete]
+```
+
+All routes infer the user from the JWT and return `404` for another user's enrollment. Active enrollment is required for progress. Paused enrollments may be resumed; Active or Paused enrollments may be withdrawn. Withdrawal preserves history and permits a fresh enrollment. Completed and Withdrawn enrollments cannot receive further activity.
+
+First-level courses are available when their explicit prerequisites are complete. Later levels unlock after every required course in earlier levels is complete; optional earlier courses and same-level ordering do not block progress. Archived content remains visible in history but cannot receive new activity.
+
+Course progress is `completed required lessons / required lessons × 100`. Pathway progress is `completed required pathway courses / required pathway courses × 100`, rounded to two decimals. Optional lessons and courses do not reduce progress. Completing the final required lesson automatically completes its course; completing every required pathway course automatically completes the enrollment. Assessments and projects do not yet affect completion.
+
+PowerShell example:
+
+```powershell
+$headers = @{ Authorization = "Bearer $accessToken" }
+$enrollment = Invoke-RestMethod -Method Post -Uri http://localhost:5080/api/me/career-enrollments -Headers $headers -ContentType application/json -Body (@{ careerId=$careerId } | ConvertTo-Json)
+Invoke-RestMethod -Method Post -Uri "http://localhost:5080/api/me/career-enrollments/$($enrollment.id)/courses/$courseId/start" -Headers $headers
+Invoke-RestMethod -Method Post -Uri "http://localhost:5080/api/me/career-enrollments/$($enrollment.id)/courses/$courseId/lessons/$lessonId/complete" -Headers $headers
+$progress = Invoke-RestMethod -Uri "http://localhost:5080/api/me/career-enrollments/$($enrollment.id)" -Headers $headers
+$progress.overallProgressPercentage
+```
+
+Assessment attempts, grading, project submissions, certificates, recommendations, and content snapshots remain unimplemented.
+
 ## Identity and authentication
 
 Careersity uses short-lived HMAC-SHA256 JWT access tokens (15 minutes by default) and rotating refresh tokens (14 days by default). Public registration always creates a Learner. Raw refresh tokens are returned once and only SHA-256 hashes are persisted. Reuse of a rotated token revokes every active session for that user. Password changes require the current password, revoke existing sessions, and return a fresh token pair.

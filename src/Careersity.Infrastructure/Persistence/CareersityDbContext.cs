@@ -4,6 +4,7 @@ using Careersity.Domain.Courses;
 using Careersity.Domain.Projects;
 using Careersity.Domain.Skills;
 using Careersity.Domain.Identity;
+using Careersity.Domain.Learning;
 using Microsoft.EntityFrameworkCore;
 using Careersity.Application.Abstractions.Persistence;
 using Careersity.Application.Common.Exceptions;
@@ -31,6 +32,9 @@ public sealed class CareersityDbContext(DbContextOptions<CareersityDbContext> op
     public DbSet<Project> Projects => Set<Project>();
     public DbSet<User> Users => Set<User>();
     public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
+    public DbSet<CareerEnrollment> CareerEnrollments => Set<CareerEnrollment>();
+    public DbSet<CourseProgress> CourseProgressRecords => Set<CourseProgress>();
+    public DbSet<LessonProgress> LessonProgressRecords => Set<LessonProgress>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

@@ -6,6 +6,7 @@ using Careersity.Domain.Skills;
 using Careersity.Domain.Identity;
 using Careersity.Domain.Assessments;
 using Careersity.Domain.Projects;
+using Careersity.Domain.Learning;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 
@@ -33,6 +34,9 @@ internal sealed class UnavailableCareersityDbContext : ICareersityDbContext
     public DbSet<Project> Projects => throw Error();
     public DbSet<User> Users => throw Error();
     public DbSet<RefreshToken> RefreshTokens => throw Error();
+    public DbSet<CareerEnrollment> CareerEnrollments => throw Error();
+    public DbSet<CourseProgress> CourseProgressRecords => throw Error();
+    public DbSet<LessonProgress> LessonProgressRecords => throw Error();
     public DatabaseFacade Database => throw Error();
     public Task<int> SaveChangesAsync(CancellationToken cancellationToken = default) => throw Error();
 }

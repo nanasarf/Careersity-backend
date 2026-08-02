@@ -6,6 +6,8 @@ using Microsoft.AspNetCore.Authorization;
 using Careersity.Application.Identity.Requests;
 using Careersity.Api.Infrastructure;
 using Careersity.Application.CurriculumActivities.Dtos;
+using Careersity.Application.LearningProgress.Dtos;
+using Careersity.Application.LearningProgress.Requests;
 using FluentAssertions;
 using Xunit;
 
@@ -102,6 +104,24 @@ public sealed class ProjectArchitectureTests
     {
         var forbidden = new[] { "IsCorrect", "CorrectAnswer", "CorrectAnswerId", "AnswerKey" };
         typeof(PublicAssessmentSummaryDto).GetProperties().Select(x => x.Name).Should().NotIntersectWith(forbidden);
+    }
+
+    [Fact]
+    public void LearnerProgressBoundaryRequiresAuthenticationWithoutAdministratorPolicy()
+    {
+        var controller = typeof(Program).Assembly.GetTypes().Single(x => x.Name == "LearnerProgressController");
+        var authorization = controller.GetCustomAttributes(typeof(AuthorizeAttribute), true).Cast<AuthorizeAttribute>().ToArray();
+        authorization.Should().ContainSingle(); authorization.Single().Policy.Should().BeNull();
+        controller.GetCustomAttributes(typeof(AllowAnonymousAttribute), true).Should().BeEmpty();
+        typeof(EnrollInCareerRequest).GetProperties().Select(x => x.Name).Should().NotContain("UserId");
+    }
+
+    [Fact]
+    public void LearningProgressContractsContainNoSensitiveSecurityOrAnswerKeyFields()
+    {
+        var forbidden = new[] { "UserId", "Password", "PasswordHash", "Token", "TokenHash", "IsCorrect", "AnswerKey" };
+        var types = typeof(CareerEnrollmentDetailDto).Assembly.GetTypes().Where(x => x.Namespace == typeof(CareerEnrollmentDetailDto).Namespace);
+        types.SelectMany(x => x.GetProperties()).Select(x => x.Name).Should().NotIntersectWith(forbidden);
     }
 
     [Fact]
