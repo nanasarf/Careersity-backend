@@ -3,6 +3,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Careersity.Application.CareerCatalog.Services;
 using Careersity.Application.Identity.Services;
 using Careersity.Application.LearningContent.Services;
+using Careersity.Application.CurriculumActivities.Services;
 
 namespace Careersity.Application;
 
@@ -24,6 +25,10 @@ public static class DependencyInjection
         services.AddScoped<ILessonService, LessonService>();
         services.AddScoped<ICoursePrerequisiteService, CoursePrerequisiteService>();
         services.AddScoped<ICourseSkillService, CourseSkillService>();
+        services.AddScoped<IAssessmentService, AssessmentService>();
+        services.AddScoped<IQuestionService, QuestionService>();
+        services.AddScoped<IAnswerOptionService, AnswerOptionService>();
+        services.AddScoped<IProjectService, ProjectService>();
 
         return services;
     }

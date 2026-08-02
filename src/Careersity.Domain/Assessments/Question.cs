@@ -29,6 +29,7 @@ public sealed class Question : AuditableEntity
 
     public void UpdatePrompt(string prompt) { Prompt = Guard.Required(prompt, 2_000, nameof(prompt)); MarkUpdated(); }
     public void ChangePoints(int points) { Points = Guard.Positive(points, nameof(points)); MarkUpdated(); }
+    public void ChangeType(QuestionType questionType) { QuestionType = questionType; MarkUpdated(); }
 
     public void AddAnswerOption(AnswerOption option)
     {

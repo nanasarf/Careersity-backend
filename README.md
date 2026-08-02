@@ -118,6 +118,53 @@ Invoke-RestMethod -Method Post -Uri "http://localhost:5080/api/admin/courses/$($
 Invoke-RestMethod -Uri "http://localhost:5080/api/courses/$($course.slug)"
 ```
 
+## Assessment and project content administration
+
+Administrators can author multiple assessments and practical projects for a course. Assessment authoring supports `SingleChoice`, `MultipleChoice`, and `TrueFalse` questions, ordered answer options, atomic reordering, validation, publication, and archiving. Project authoring supports instructions, expected output, evaluation criteria, submission type, duration, publication, and archiving.
+
+Public course-activity routes expose Published content only under a Published course:
+
+```text
+GET /api/courses/{courseSlug}/assessments
+GET /api/courses/{courseSlug}/projects
+GET /api/courses/{courseSlug}/projects/{projectId}
+```
+
+Assessment responses are summaries only. Correct options, answer keys, and Administrator authoring DTOs are never returned publicly. Full project instructions are available through the public project-detail route.
+
+Protected Administrator routes are rooted at `/api/admin/assessments` and `/api/admin/projects`. Assessment subroutes manage questions and answer options, including `/questions/reorder` and `/answer-options/reorder`. All require an Administrator bearer token. Published and Archived assessments and projects are immutable; Published content may be archived but cannot return to Draft.
+
+An assessment may be published only when its parent course is Published, it has at least one question, question and option orders are contiguous from zero, every question is valid for its type, and total points are positive. Projects require a Published parent course and retain Domain validation for required descriptions, instructions, and positive duration.
+
+A compact PowerShell flow is:
+
+```powershell
+$headers = @{ Authorization = "Bearer $accessToken" }
+$assessment = Invoke-RestMethod -Method Post -Uri http://localhost:5080/api/admin/assessments -Headers $headers -ContentType application/json -Body (@{
+  courseId=$courseId; title="SQL Fundamentals"; description="Checks SQL concepts"
+  passingScorePercentage=70; maximumAttempts=3
+} | ConvertTo-Json)
+$question = Invoke-RestMethod -Method Post -Uri "http://localhost:5080/api/admin/assessments/$($assessment.id)/questions" -Headers $headers -ContentType application/json -Body (@{
+  prompt="Which statement reads rows?"; questionType="SingleChoice"; order=0; points=1
+} | ConvertTo-Json)
+Invoke-RestMethod -Method Post -Uri "http://localhost:5080/api/admin/assessments/$($assessment.id)/questions/$($question.id)/answer-options" -Headers $headers -ContentType application/json -Body (@{
+  text="SELECT"; isCorrect=$true; order=0
+} | ConvertTo-Json)
+# Add at least one additional option before publication.
+Invoke-RestMethod -Method Post -Uri "http://localhost:5080/api/admin/assessments/$($assessment.id)/publish" -Headers $headers
+
+$project = Invoke-RestMethod -Method Post -Uri http://localhost:5080/api/admin/projects -Headers $headers -ContentType application/json -Body (@{
+  courseId=$courseId; title="Portfolio Project"; description="Build a practical solution"
+  instructions="Implement and document the project"; expectedOutput="Repository URL"
+  evaluationCriteria="Correctness and clarity"; submissionType="RepositoryUrl"; estimatedDurationMinutes=180
+} | ConvertTo-Json)
+Invoke-RestMethod -Method Post -Uri "http://localhost:5080/api/admin/projects/$($project.id)/publish" -Headers $headers
+Invoke-RestMethod -Uri "http://localhost:5080/api/courses/$courseSlug/assessments"
+Invoke-RestMethod -Uri "http://localhost:5080/api/courses/$courseSlug/projects/$($project.id)"
+```
+
+Assessment attempts, user answers, grading history, project submissions, reviewer feedback, enrollment, and progress tracking are not implemented.
+
 ## Identity and authentication
 
 Careersity uses short-lived HMAC-SHA256 JWT access tokens (15 minutes by default) and rotating refresh tokens (14 days by default). Public registration always creates a Learner. Raw refresh tokens are returned once and only SHA-256 hashes are persisted. Reuse of a rotated token revokes every active session for that user. Password changes require the current password, revoke existing sessions, and return a fresh token pair.

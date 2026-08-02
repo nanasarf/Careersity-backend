@@ -2,6 +2,8 @@ using Careersity.Domain.Careers;
 using Careersity.Domain.Courses;
 using Careersity.Domain.Skills;
 using Careersity.Domain.Identity;
+using Careersity.Domain.Assessments;
+using Careersity.Domain.Projects;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 
@@ -20,6 +22,10 @@ public interface ICareersityDbContext
     DbSet<Lesson> Lessons { get; }
     DbSet<CoursePrerequisite> CoursePrerequisites { get; }
     DbSet<CourseSkill> CourseSkills { get; }
+    DbSet<Assessment> Assessments { get; }
+    DbSet<Question> Questions { get; }
+    DbSet<AnswerOption> AnswerOptions { get; }
+    DbSet<Project> Projects { get; }
     DbSet<User> Users { get; }
     DbSet<RefreshToken> RefreshTokens { get; }
     DatabaseFacade Database { get; }

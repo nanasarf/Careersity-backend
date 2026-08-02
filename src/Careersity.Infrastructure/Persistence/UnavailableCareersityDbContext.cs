@@ -4,6 +4,8 @@ using Careersity.Domain.Careers;
 using Careersity.Domain.Courses;
 using Careersity.Domain.Skills;
 using Careersity.Domain.Identity;
+using Careersity.Domain.Assessments;
+using Careersity.Domain.Projects;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 
@@ -25,6 +27,10 @@ internal sealed class UnavailableCareersityDbContext : ICareersityDbContext
     public DbSet<Lesson> Lessons => throw Error();
     public DbSet<CoursePrerequisite> CoursePrerequisites => throw Error();
     public DbSet<CourseSkill> CourseSkills => throw Error();
+    public DbSet<Assessment> Assessments => throw Error();
+    public DbSet<Question> Questions => throw Error();
+    public DbSet<AnswerOption> AnswerOptions => throw Error();
+    public DbSet<Project> Projects => throw Error();
     public DbSet<User> Users => throw Error();
     public DbSet<RefreshToken> RefreshTokens => throw Error();
     public DatabaseFacade Database => throw Error();

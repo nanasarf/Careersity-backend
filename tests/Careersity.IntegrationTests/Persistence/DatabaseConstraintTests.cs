@@ -6,6 +6,7 @@ using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
 using Careersity.Application.Common.Exceptions;
 using Careersity.Domain.Skills;
+using Careersity.Domain.Assessments;
 using Xunit;
 
 namespace Careersity.IntegrationTests.Persistence;
@@ -90,6 +91,27 @@ public sealed class DatabaseConstraintTests(PostgreSqlFixture fixture)
         await FluentActions.Awaiting(() => context.Database.ExecuteSqlInterpolatedAsync($"INSERT INTO \"CoursePrerequisites\" (\"Id\", \"CourseId\", \"PrerequisiteCourseId\", \"IsRequired\", \"CreatedAtUtc\") VALUES ({Guid.NewGuid()}, {course.Id}, {prerequisite.Id}, {false}, {now})")).Should().ThrowAsync<DbException>();
         await context.Database.ExecuteSqlInterpolatedAsync($"INSERT INTO \"CourseSkills\" (\"Id\", \"CourseId\", \"SkillId\", \"ProficiencyLevel\", \"IsPrimary\", \"CreatedAtUtc\") VALUES ({Guid.NewGuid()}, {course.Id}, {skill.Id}, {"Beginner"}, {true}, {now})");
         await FluentActions.Awaiting(() => context.Database.ExecuteSqlInterpolatedAsync($"INSERT INTO \"CourseSkills\" (\"Id\", \"CourseId\", \"SkillId\", \"ProficiencyLevel\", \"IsPrimary\", \"CreatedAtUtc\") VALUES ({Guid.NewGuid()}, {course.Id}, {skill.Id}, {"Advanced"}, {false}, {now})")).Should().ThrowAsync<DbException>();
+    }
+
+    [Fact]
+    public async Task AssessmentQuestionAndAnswerOptionConstraints_AreEnforced()
+    {
+        var course = CreateCourse($"activities-{Guid.NewGuid():N}");
+        var assessment = new Assessment(course.Id, "Assessment", 70, 3);
+        await using var context = fixture.CreateContext(); context.AddRange(course, assessment); await context.SaveChangesAsync();
+        var now = DateTimeOffset.UtcNow; var questionId = Guid.NewGuid();
+        await context.Database.ExecuteSqlInterpolatedAsync(
+            $"INSERT INTO \"Questions\" (\"Id\", \"AssessmentId\", \"Prompt\", \"QuestionType\", \"Order\", \"Points\", \"CreatedAtUtc\") VALUES ({questionId}, {assessment.Id}, {"One"}, {"SingleChoice"}, {0}, {1}, {now})");
+        await FluentActions.Awaiting(() => context.Database.ExecuteSqlInterpolatedAsync(
+            $"INSERT INTO \"Questions\" (\"Id\", \"AssessmentId\", \"Prompt\", \"QuestionType\", \"Order\", \"Points\", \"CreatedAtUtc\") VALUES ({Guid.NewGuid()}, {assessment.Id}, {"Duplicate"}, {"TrueFalse"}, {0}, {1}, {now})")).Should().ThrowAsync<DbException>();
+        await FluentActions.Awaiting(() => context.Database.ExecuteSqlInterpolatedAsync(
+            $"INSERT INTO \"Questions\" (\"Id\", \"AssessmentId\", \"Prompt\", \"QuestionType\", \"Order\", \"Points\", \"CreatedAtUtc\") VALUES ({Guid.NewGuid()}, {assessment.Id}, {"Invalid"}, {"TrueFalse"}, {1}, {0}, {now})")).Should().ThrowAsync<DbException>();
+        await context.Database.ExecuteSqlInterpolatedAsync(
+            $"INSERT INTO \"AnswerOptions\" (\"Id\", \"QuestionId\", \"Text\", \"IsCorrect\", \"Order\", \"CreatedAtUtc\") VALUES ({Guid.NewGuid()}, {questionId}, {"A"}, {true}, {0}, {now})");
+        await FluentActions.Awaiting(() => context.Database.ExecuteSqlInterpolatedAsync(
+            $"INSERT INTO \"AnswerOptions\" (\"Id\", \"QuestionId\", \"Text\", \"IsCorrect\", \"Order\", \"CreatedAtUtc\") VALUES ({Guid.NewGuid()}, {questionId}, {"B"}, {false}, {0}, {now})")).Should().ThrowAsync<DbException>();
+        await FluentActions.Awaiting(() => context.Database.ExecuteSqlInterpolatedAsync(
+            $"INSERT INTO \"Assessments\" (\"Id\", \"CourseId\", \"Title\", \"PassingScorePercentage\", \"MaximumAttempts\", \"Status\", \"CreatedAtUtc\") VALUES ({Guid.NewGuid()}, {course.Id}, {"Invalid attempts"}, {70}, {0}, {"Draft"}, {now})")).Should().ThrowAsync<DbException>();
     }
 
     private static Course CreateCourse(string slug) => new("Course", slug, "Description", CourseDifficulty.Foundation, 60);

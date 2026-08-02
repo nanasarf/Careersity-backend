@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Authorization;
 using Careersity.Application.Identity.Requests;
 using Careersity.Api.Infrastructure;
+using Careersity.Application.CurriculumActivities.Dtos;
 using FluentAssertions;
 using Xunit;
 
@@ -79,6 +80,28 @@ public sealed class ProjectArchitectureTests
         publicControllers.SelectMany(x => x.GetMethods(System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public)
             .Where(method => method.DeclaringType == x)).Select(x => x.ReturnType)
             .Should().NotContain(type => type.Assembly == typeof(Careersity.Domain.Courses.Course).Assembly);
+    }
+
+    [Fact]
+    public void CurriculumActivityControllersHaveCorrectAuthorizationBoundaries()
+    {
+        var api = typeof(Program).Assembly;
+        var administrators = api.GetTypes().Where(x => x.Name is "AdminAssessmentsController" or "AdminProjectsController").ToArray();
+        administrators.Should().HaveCount(2);
+        administrators.Should().OnlyContain(x => x.GetCustomAttributes(typeof(AuthorizeAttribute), true)
+            .Cast<AuthorizeAttribute>().Any(a => a.Policy == SecurityPolicies.AdministratorOnly));
+        administrators.Should().OnlyContain(x => !x.GetCustomAttributes(typeof(AllowAnonymousAttribute), true).Any());
+
+        var publicController = api.GetTypes().Single(x => x.Name == "PublicCourseActivitiesController");
+        publicController.GetCustomAttributes(typeof(AllowAnonymousAttribute), true).Should().NotBeEmpty();
+        publicController.GetCustomAttributes(typeof(AuthorizeAttribute), true).Should().BeEmpty();
+    }
+
+    [Fact]
+    public void PublicAssessmentContractCannotExposeAnswerCorrectness()
+    {
+        var forbidden = new[] { "IsCorrect", "CorrectAnswer", "CorrectAnswerId", "AnswerKey" };
+        typeof(PublicAssessmentSummaryDto).GetProperties().Select(x => x.Name).Should().NotIntersectWith(forbidden);
     }
 
     [Fact]
