@@ -355,3 +355,53 @@ Invoke-RestMethod -Method Post -Uri "$baseUrl/api/me/career-enrollments/$enrollm
 ```
 
 Current limitations include no provider APIs or OAuth, URL synchronization, scraping, availability jobs, automatic remote completion verification, file/video hosting, Careersity-issued certificates, project review, notifications, payments, recommendations, or frontend.
+## MVP operations and deployment
+
+The backend is a .NET 8 Clean Architecture API backed by PostgreSQL. Its MVP covers identity, administrator-authored career curricula, third-party learning-resource attribution, learner enrollment/progress, and optional native assessment grading. Careersity organizes publicly accessible learning links; it does not own external content or issue degrees.
+
+Prerequisites are .NET 8 SDK, PostgreSQL 16, and optionally Docker Desktop. Configure `ConnectionStrings__CareersityDatabase`, `Jwt__Issuer`, `Jwt__Audience`, a random signing key of at least 32 bytes, and positive token lifetimes. Initial administrator provisioning remains opt-in through `InitialAdmin__Enabled`; credentials must come from environment variables or user secrets.
+
+Database migrations never run implicitly by default. Set `Database__ApplyMigrationsOnStartup=true` only in Development or a controlled deployment. When enabled, migrations run before administrator provisioning and seed data. When disabled, `/health/ready` reports 503 if migrations are pending. Never use `EnsureCreated()`.
+
+Development/demo seeding is disabled by default. Enable `SeedData__Enabled` and individual `IncludeDemoAdministrator`, `IncludeDemoLearner`, or `IncludeSampleCurriculum` flags. User credentials are configuration-only and existing password hashes are never replaced. Sample curriculum creates the Data Analyst pathway with three levels, nine concise courses, six skills, and Draft provider records. Provider names identify original sources and do not imply partnership or endorsement. Unreviewed external resources are not published.
+
+Administrators can validate or atomically import nested JSON curricula:
+
+```text
+POST /api/admin/curriculum-imports/validate
+POST /api/admin/curriculum-imports
+```
+
+Validation performs no writes and returns paths, codes, messages, warnings, and counts. Import repeats validation, uses one transaction, and supports only `CreateOnly`; existing or repeated slugs fail rather than merge. Requests are limited to 5 MB, 100 skills/providers, 200 instructors/courses, 2,000 lessons, 3,000 external resources, 20 levels, and 500 pathway assignments. URLs are format-validated but never fetched. See the request records under `Application/CurriculumImports/Requests` for the complete JSON shape.
+
+`GET /health` is database-independent liveness. `GET /health/ready` checks configured PostgreSQL connectivity, applied migrations, and core service resolution. Neither endpoint requires authentication or exposes connection strings.
+
+Every response includes `X-Correlation-ID`. A safe client value is preserved; otherwise one is generated and placed in the structured logging scope and Problem Details trace identifier. Request logs contain method, path, status, duration, correlation, and authenticated user ID when present—not bodies, authorization headers, passwords, tokens, imported documents, or connection strings.
+
+CORS uses explicit `Cors__AllowedOrigins__N` entries. Production rejects missing/wildcard origins. Baseline `nosniff`, frame-denial, referrer, and API CSP headers are applied. Existing authentication rate limits remain unchanged.
+
+Local containers use API port `58080` and PostgreSQL host port `55433`:
+
+```powershell
+Copy-Item .env.example .env
+docker compose config
+docker compose build
+docker compose up -d
+Invoke-WebRequest http://localhost:58080/health
+Invoke-WebRequest http://localhost:58080/health/ready
+```
+
+The multi-stage API image uses official .NET 8 SDK/runtime images and the non-root runtime `app` user. `.env` is ignored; `.env.example` contains development placeholders only. GitHub Actions restores, builds, tests with Testcontainers, and builds the Docker image on pull requests and pushes to `main`; it does not deploy or publish images.
+
+Production checklist:
+
+- Use a dedicated PostgreSQL database/user and a randomly generated JWT key.
+- Configure explicit HTTPS frontend CORS origins and reverse-proxy TLS.
+- Decide whether the deployment job or controlled startup applies migrations.
+- Keep seed and demo-user flags disabled.
+- Provision the initial administrator through secret-backed environment configuration, then disable provisioning.
+- Verify `/health`, `/health/ready`, correlation headers, and structured logs.
+- Back up PostgreSQL regularly and test restoration before launch.
+- Retain database backups before every migration-bearing release.
+
+Known MVP limitations include no frontend, recommendations, certificates, payments, provider integrations, scraping, URL monitoring, email, notifications, distributed cache, message broker, or automatic production deployment.

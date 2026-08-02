@@ -1,0 +1,39 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-careersity}
+      POSTGRES_USER: ${POSTGRES_USER:-careersity}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
+    ports:
+      - "55433:5432"
+    volumes:
+      - careersity-postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-careersity} -d ${POSTGRES_DB:-careersity}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+  api:
+    build:
+      context: .
+      dockerfile: src/Careersity.Api/Dockerfile
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ASPNETCORE_HTTP_PORTS: 8080
+      ConnectionStrings__CareersityDatabase: Host=postgres;Port=5432;Database=${POSTGRES_DB:-careersity};Username=${POSTGRES_USER:-careersity};Password=${POSTGRES_PASSWORD}
+      Jwt__Issuer: ${Jwt__Issuer:-Careersity.Local}
+      Jwt__Audience: ${Jwt__Audience:-Careersity.Local.Client}
+      Jwt__SigningKey: ${Jwt__SigningKey:?Set Jwt__SigningKey in .env}
+      Jwt__AccessTokenLifetimeMinutes: ${Jwt__AccessTokenLifetimeMinutes:-15}
+      Jwt__RefreshTokenLifetimeDays: ${Jwt__RefreshTokenLifetimeDays:-14}
+      Database__ApplyMigrationsOnStartup: ${Database__ApplyMigrationsOnStartup:-true}
+      SeedData__Enabled: ${SeedData__Enabled:-false}
+      Cors__AllowedOrigins__0: ${Cors__AllowedOrigins__0:-http://localhost:5173}
+    ports:
+      - "58080:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+volumes:
+  careersity-postgres:

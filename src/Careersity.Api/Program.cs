@@ -12,14 +12,26 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using Microsoft.Extensions.Options;
+using Microsoft.AspNetCore.Diagnostics.HealthChecks;
+using Microsoft.Extensions.Diagnostics.HealthChecks;
+using Careersity.Infrastructure.Initialization;
 
 var builder = WebApplication.CreateBuilder(args);
+
+var connectionString = builder.Configuration.GetConnectionString("CareersityDatabase");
+var corsOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? [];
+if (builder.Environment.IsProduction())
+{
+    if (string.IsNullOrWhiteSpace(connectionString)) throw new InvalidOperationException("Production requires ConnectionStrings:CareersityDatabase.");
+    if (corsOrigins.Length == 0 || corsOrigins.Any(x => x == "*")) throw new InvalidOperationException("Production requires explicit non-wildcard Cors:AllowedOrigins.");
+}
 
 builder.Services.AddControllers(options => options.Filters.Add<RequestValidationFilter>())
     .AddJsonOptions(options => options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter()));
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(options =>
 {
+    options.SwaggerDoc("v1", new OpenApiInfo { Title = "Careersity API", Version = "v1", Description = "MVP API for organizing third-party learning resources into career pathways. Careersity does not claim ownership of external content." });
     options.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
     {
         Name = "Authorization", Type = SecuritySchemeType.Http, Scheme = "bearer", BearerFormat = "JWT",
@@ -30,7 +42,8 @@ builder.Services.AddSwaggerGen(options =>
         [new OpenApiSecurityScheme { Reference = new OpenApiReference { Type = ReferenceType.SecurityScheme, Id = "Bearer" } }] = Array.Empty<string>()
     });
 });
-builder.Services.AddHealthChecks();
+builder.Services.AddHealthChecks().AddCheck("self",()=>HealthCheckResult.Healthy(),["live"]).AddCheck<DatabaseReadinessHealthCheck>("postgresql",tags:["ready","database"]);
+builder.Services.AddCors(options=>options.AddPolicy("ConfiguredOrigins",policy=>{if(corsOrigins.Length>0)policy.WithOrigins(corsOrigins).WithMethods("GET","POST","PUT","DELETE").WithHeaders("Authorization","Content-Type",CorrelationMiddleware.Header).WithExposedHeaders(CorrelationMiddleware.Header);}));
 builder.Services.AddProblemDetails();
 builder.Services.AddExceptionHandler<ApiExceptionHandler>();
 builder.Services.AddCareersityApplication();
@@ -77,6 +90,8 @@ builder.Services.AddRateLimiter(options =>
         _ => new FixedWindowRateLimiterOptions { PermitLimit = 5, Window = TimeSpan.FromHours(1), QueueLimit = 0 }));
     options.AddPolicy(SecurityPolicies.RefreshRateLimit, context => RateLimitPartition.GetFixedWindowLimiter(Key(context),
         _ => new FixedWindowRateLimiterOptions { PermitLimit = 20, Window = TimeSpan.FromMinutes(1), QueueLimit = 0 }));
+    options.AddPolicy(SecurityPolicies.MutationRateLimit, context => RateLimitPartition.GetFixedWindowLimiter(
+        context.User.FindFirst("sub")?.Value ?? Key(context), _ => new FixedWindowRateLimiterOptions { PermitLimit = 30, Window = TimeSpan.FromMinutes(1), QueueLimit = 0 }));
     options.OnRejected = (context, _) => new ValueTask(AuthenticationProblemWriter.WriteAsync(context.HttpContext,
         StatusCodes.Status429TooManyRequests, "Too many requests", "The authentication request limit was exceeded."));
 });
@@ -85,9 +100,12 @@ var app = builder.Build();
 
 await using (var scope = app.Services.CreateAsyncScope())
 {
-    await scope.ServiceProvider.GetRequiredService<InitialAdministratorInitializer>().InitializeAsync();
+    await scope.ServiceProvider.GetRequiredService<ApplicationStartupInitializer>().InitializeAsync();
 }
 
+app.UseMiddleware<CorrelationMiddleware>();
+app.UseMiddleware<RequestLoggingMiddleware>();
+app.UseMiddleware<SecurityHeadersMiddleware>();
 app.UseExceptionHandler();
 
 if (app.Environment.IsDevelopment())
@@ -97,11 +115,13 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
+app.UseCors("ConfiguredOrigins");
 app.UseRateLimiter();
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
-app.MapHealthChecks("/health");
+app.MapHealthChecks("/health",new HealthCheckOptions{Predicate=x=>x.Tags.Contains("live")});
+app.MapHealthChecks("/health/ready",new HealthCheckOptions{Predicate=x=>x.Tags.Contains("ready")});
 
 await app.RunAsync();
 

@@ -6,4 +6,5 @@ public static class SecurityPolicies
     public const string LoginRateLimit = "LoginRateLimit";
     public const string RegistrationRateLimit = "RegistrationRateLimit";
     public const string RefreshRateLimit = "RefreshRateLimit";
+    public const string MutationRateLimit = "MutationRateLimit";
 }

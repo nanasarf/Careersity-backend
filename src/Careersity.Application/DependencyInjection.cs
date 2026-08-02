@@ -7,6 +7,7 @@ using Careersity.Application.CurriculumActivities.Services;
 using Careersity.Application.LearningProgress.Services;
 using Careersity.Application.AssessmentAttempts.Services;
 using Careersity.Application.ExternalLearning.Services;
+using Careersity.Application.CurriculumImports.Services;
 
 namespace Careersity.Application;
 
@@ -40,6 +41,7 @@ public static class DependencyInjection
         services.AddScoped<IExternalLearningResourceService, ExternalLearningResourceService>();
         services.AddScoped<ICourseExternalResourceService, CourseExternalResourceService>();
         services.AddScoped<ILearnerExternalResourceProgressService, LearnerExternalResourceProgressService>();
+        services.AddScoped<ICurriculumImportService, CurriculumImportService>();
 
         return services;
     }

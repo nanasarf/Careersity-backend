@@ -7,6 +7,7 @@ using Careersity.Application.Abstractions.Authentication;
 using Careersity.Domain.Identity;
 using Careersity.Infrastructure.Authentication;
 using Microsoft.AspNetCore.Identity;
+using Careersity.Infrastructure.Initialization;
 
 namespace Careersity.Infrastructure;
 
@@ -35,6 +36,10 @@ public static class DependencyInjection
         services.AddSingleton<IAccessTokenService, AccessTokenService>();
         services.Configure<InitialAdminOptions>(configuration.GetSection(InitialAdminOptions.SectionName));
         services.AddScoped<InitialAdministratorInitializer>();
+        services.AddOptions<DatabaseOptions>().Bind(configuration.GetSection(DatabaseOptions.SectionName));
+        services.AddOptions<SeedDataOptions>().Bind(configuration.GetSection(SeedDataOptions.SectionName));
+        services.AddScoped<IDevelopmentDataSeeder, CareersityDataInitializer>();
+        services.AddScoped<ApplicationStartupInitializer>();
 
         var connectionString = configuration.GetConnectionString("CareersityDatabase");
         if (!string.IsNullOrWhiteSpace(connectionString))

@@ -1,0 +1,21 @@
+name: Backend CI
+on:
+  pull_request:
+  push:
+    branches: [main]
+concurrency:
+  group: backend-ci-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+      - run: dotnet restore Careersity.sln
+      - run: dotnet build Careersity.sln --no-restore --configuration Release
+      - run: dotnet test Careersity.sln --no-build --no-restore --configuration Release
+      - run: docker build -f src/Careersity.Api/Dockerfile -t careersity-api:ci .

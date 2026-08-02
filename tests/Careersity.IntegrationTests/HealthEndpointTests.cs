@@ -28,4 +28,24 @@ public sealed class HealthEndpointTests
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
     }
+
+    [Fact]
+    public async Task ReadinessWithoutDatabase_ReturnsServiceUnavailable()
+    {
+        using var response = await _client.GetAsync("/health/ready");
+        response.StatusCode.Should().Be(HttpStatusCode.ServiceUnavailable);
+        (await response.Content.ReadAsStringAsync()).ToLowerInvariant().Should().NotContain("password");
+    }
+
+    [Fact]
+    public async Task CorrelationHeader_IsGeneratedOrPreservedAndMatchesProblemDetails()
+    {
+        using var generated = await _client.GetAsync("/health");
+        generated.Headers.Contains("X-Correlation-ID").Should().BeTrue();
+        using var request = new HttpRequestMessage(HttpMethod.Get, "/api/learning-providers");
+        request.Headers.Add("X-Correlation-ID", "client-correlation-123");
+        using var response = await _client.SendAsync(request);
+        response.Headers.GetValues("X-Correlation-ID").Single().Should().Be("client-correlation-123");
+        (await response.Content.ReadAsStringAsync()).Should().Contain("client-correlation-123");
+    }
 }

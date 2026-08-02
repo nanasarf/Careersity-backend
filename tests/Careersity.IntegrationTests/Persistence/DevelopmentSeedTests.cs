@@ -1,0 +1,8 @@
+using Careersity.Domain.Enums;using Microsoft.AspNetCore.Hosting;using Microsoft.AspNetCore.Mvc.Testing;using Microsoft.Extensions.Configuration;using Microsoft.EntityFrameworkCore;using FluentAssertions;using Xunit;
+namespace Careersity.IntegrationTests.Persistence;
+[Collection(PostgreSqlCollection.Name)]
+public sealed class DevelopmentSeedTests(PostgreSqlFixture fixture)
+{
+ [Fact]public async Task SampleCurriculumSeedIsExplicitIdempotentAndKeepsProvidersDraft(){await using(var first=SeedFactory()){using var client=first.CreateClient();(await client.GetAsync("/health")).EnsureSuccessStatusCode();}await using(var second=SeedFactory()){using var client=second.CreateClient();(await client.GetAsync("/health")).EnsureSuccessStatusCode();}await using var db=fixture.CreateContext();(await db.Careers.CountAsync(x=>x.Slug=="data-analyst")).Should().Be(1);(await db.Courses.CountAsync(x=>new[]{"introduction-to-data-analysis","spreadsheet-fundamentals","basic-statistics","sql-fundamentals","data-cleaning-course","data-visualization-course","business-analytics","dashboard-design","data-analyst-capstone-preparation"}.Contains(x.Slug))).Should().Be(9);(await db.LearningProviders.Where(x=>new[]{"mit-open-courseware","khan-academy","freecodecamp","youtube"}.Contains(x.Slug)).ToListAsync()).Should().OnlyContain(x=>x.Status==ContentStatus.Draft);}
+ private WebApplicationFactory<Program>SeedFactory()=>TestApiFactory.Create(fixture).WithWebHostBuilder(builder=>builder.ConfigureAppConfiguration((_,configuration)=>configuration.AddInMemoryCollection(new Dictionary<string,string?>{{"SeedData:Enabled","true"},{"SeedData:IncludeSampleCurriculum","true"}})));
+}
