@@ -1,13 +1,16 @@
 using Careersity.Application.CareerCatalog.Requests;
 using Careersity.Application.CareerCatalog.Services;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authorization;
+using Careersity.Api.Infrastructure;
 
 namespace Careersity.Api.Controllers;
 
-/// <summary>Temporarily unsecured career-pathway administration endpoints.</summary>
+/// <summary>Administrator-only career-pathway management endpoints.</summary>
 [ApiController]
+[Authorize(Policy = SecurityPolicies.AdministratorOnly)]
 [Route("api/admin/careers/{careerId:guid}/pathways")]
-[Tags("Admin Career Catalog (Temporarily Unsecured)")]
+[Tags("Administrator Career Catalog")]
 public sealed class AdminCareerPathwaysController(ICareerPathwayService service) : ControllerBase
 {
     [HttpPost] public async Task<IActionResult> Create(Guid careerId, CreateCareerPathwayRequest request, CancellationToken cancellationToken) { var result = await service.CreateAsync(careerId, request, cancellationToken); return CreatedAtAction(nameof(Get), new { careerId, pathwayId = result.Id }, result); }

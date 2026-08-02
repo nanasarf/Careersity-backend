@@ -33,7 +33,8 @@ public sealed class CareerCatalogApiTests(PostgreSqlFixture database)
     {
         var suffix = Guid.NewGuid().ToString("N");
         var (skill, course) = await CreatePublishedDependenciesAsync(suffix);
-        using var factory = CreateFactory(); using var client = factory.CreateClient();
+        var authenticated = await TestApiFactory.CreateAdministratorClientAsync(database);
+        using var factory = authenticated.Factory; using var client = authenticated.Client;
 
         var categoryResponse = await client.PostAsJsonAsync("/api/admin/career-categories",
             new CreateCareerCategoryRequest("Technology", $"technology-{suffix}", "Technology careers"));
@@ -78,9 +79,10 @@ public sealed class CareerCatalogApiTests(PostgreSqlFixture database)
     }
 
     [Fact]
-    public async Task DraftsRemainHidden_AndAdminRoutesRequireNoAuthentication()
+    public async Task DraftsRemainHidden_AfterAuthenticatedAdminCreation()
     {
-        var suffix = Guid.NewGuid().ToString("N"); using var factory = CreateFactory(); using var client = factory.CreateClient();
+        var suffix = Guid.NewGuid().ToString("N"); var authenticated = await TestApiFactory.CreateAdministratorClientAsync(database);
+        using var factory = authenticated.Factory; using var client = authenticated.Client;
         var response = await client.PostAsJsonAsync("/api/admin/career-categories", new CreateCareerCategoryRequest("Draft", $"draft-{suffix}", null));
         response.StatusCode.Should().Be(HttpStatusCode.Created);
         var categories = await client.GetFromJsonAsync<IReadOnlyCollection<CareerCategoryDto>>("/api/career-categories", JsonOptions);
@@ -90,7 +92,8 @@ public sealed class CareerCatalogApiTests(PostgreSqlFixture database)
     [Fact]
     public async Task DuplicateInvalidAndMissingRequests_ReturnSafeProblemDetails()
     {
-        var suffix = Guid.NewGuid().ToString("N"); using var factory = CreateFactory(); using var client = factory.CreateClient();
+        var suffix = Guid.NewGuid().ToString("N"); var authenticated = await TestApiFactory.CreateAdministratorClientAsync(database);
+        using var factory = authenticated.Factory; using var client = authenticated.Client;
         var request = new CreateCareerCategoryRequest("Technology", $"duplicate-{suffix}", null);
         (await client.PostAsJsonAsync("/api/admin/career-categories", request)).StatusCode.Should().Be(HttpStatusCode.Created);
         var duplicate = await client.PostAsJsonAsync("/api/admin/career-categories", request);
@@ -109,25 +112,10 @@ public sealed class CareerCatalogApiTests(PostgreSqlFixture database)
     [Fact]
     public async Task HealthAndSwaggerRemainAvailableWithDatabaseConfigured()
     {
-        using var factory = CreateFactory(); using var client = factory.CreateClient();
+        using var factory = TestApiFactory.Create(database); using var client = factory.CreateClient();
         (await client.GetAsync("/health")).StatusCode.Should().Be(HttpStatusCode.OK);
         (await client.GetAsync("/swagger/index.html")).StatusCode.Should().Be(HttpStatusCode.OK);
     }
-
-    private WebApplicationFactory<Program> CreateFactory() => new WebApplicationFactory<Program>().WithWebHostBuilder(builder =>
-    {
-        builder.UseEnvironment("Development");
-        builder.ConfigureAppConfiguration((_, configuration) => configuration.AddInMemoryCollection(
-            new Dictionary<string, string?> { ["ConnectionStrings:CareersityDatabase"] = database.ConnectionString }));
-        builder.ConfigureServices(services =>
-        {
-            services.RemoveAll<ICareersityDbContext>();
-            services.RemoveAll<CareersityDbContext>();
-            services.RemoveAll<DbContextOptions<CareersityDbContext>>();
-            services.AddDbContext<CareersityDbContext>(options => options.UseNpgsql(database.ConnectionString));
-            services.AddScoped<ICareersityDbContext>(provider => provider.GetRequiredService<CareersityDbContext>());
-        });
-    });
 
     private async Task<(Skill Skill, Course Course)> CreatePublishedDependenciesAsync(string suffix)
     {

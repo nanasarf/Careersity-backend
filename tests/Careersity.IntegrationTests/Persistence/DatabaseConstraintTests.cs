@@ -5,6 +5,7 @@ using Careersity.Domain.Enums;
 using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
 using Careersity.Application.Common.Exceptions;
+using Careersity.Domain.Skills;
 using Xunit;
 
 namespace Careersity.IntegrationTests.Persistence;
@@ -67,6 +68,28 @@ public sealed class DatabaseConstraintTests(PostgreSqlFixture fixture)
         var invalidCourse = () => context.Database.ExecuteSqlInterpolatedAsync(
             $"INSERT INTO \"Courses\" (\"Id\", \"Title\", \"Slug\", \"ShortDescription\", \"Difficulty\", \"EstimatedDurationMinutes\", \"Status\", \"CreatedAtUtc\") VALUES ({Guid.NewGuid()}, {"Invalid"}, {$"invalid-{Guid.NewGuid():N}"}, {"Invalid"}, {"Foundation"}, {0}, {"Draft"}, {now})");
         await invalidCourse.Should().ThrowAsync<DbException>();
+    }
+
+    [Fact]
+    public async Task LearningContentRelationshipAndSlugUniqueness_AreEnforced()
+    {
+        var suffix = Guid.NewGuid().ToString("N");
+        await using (var skillContext = fixture.CreateContext())
+        {
+            skillContext.Skills.AddRange(new Skill("One", $"skill-{suffix}", SkillCategory.Technical),
+                new Skill("Two", $"skill-{suffix}", SkillCategory.Tool));
+            await skillContext.Invoking(x => x.SaveChangesAsync()).Should().ThrowAsync<ConflictException>();
+        }
+        var course = CreateCourse($"relationships-{suffix}"); var prerequisite = CreateCourse($"prerequisite-{suffix}");
+        var skill = new Skill("Relationship Skill", $"relationship-skill-{suffix}", SkillCategory.Technical);
+        await using var context = fixture.CreateContext(); context.AddRange(course, prerequisite, skill); await context.SaveChangesAsync();
+        var now = DateTimeOffset.UtcNow;
+        await context.Database.ExecuteSqlInterpolatedAsync($"INSERT INTO \"Lessons\" (\"Id\", \"CourseId\", \"Title\", \"Slug\", \"ContentType\", \"EstimatedDurationMinutes\", \"Order\", \"IsRequired\", \"CreatedAtUtc\") VALUES ({Guid.NewGuid()}, {course.Id}, {"One"}, {"same"}, {"Article"}, {10}, {0}, {true}, {now})");
+        await FluentActions.Awaiting(() => context.Database.ExecuteSqlInterpolatedAsync($"INSERT INTO \"Lessons\" (\"Id\", \"CourseId\", \"Title\", \"Slug\", \"ContentType\", \"EstimatedDurationMinutes\", \"Order\", \"IsRequired\", \"CreatedAtUtc\") VALUES ({Guid.NewGuid()}, {course.Id}, {"Two"}, {"same"}, {"Article"}, {10}, {1}, {true}, {now})")).Should().ThrowAsync<DbException>();
+        await context.Database.ExecuteSqlInterpolatedAsync($"INSERT INTO \"CoursePrerequisites\" (\"Id\", \"CourseId\", \"PrerequisiteCourseId\", \"IsRequired\", \"CreatedAtUtc\") VALUES ({Guid.NewGuid()}, {course.Id}, {prerequisite.Id}, {true}, {now})");
+        await FluentActions.Awaiting(() => context.Database.ExecuteSqlInterpolatedAsync($"INSERT INTO \"CoursePrerequisites\" (\"Id\", \"CourseId\", \"PrerequisiteCourseId\", \"IsRequired\", \"CreatedAtUtc\") VALUES ({Guid.NewGuid()}, {course.Id}, {prerequisite.Id}, {false}, {now})")).Should().ThrowAsync<DbException>();
+        await context.Database.ExecuteSqlInterpolatedAsync($"INSERT INTO \"CourseSkills\" (\"Id\", \"CourseId\", \"SkillId\", \"ProficiencyLevel\", \"IsPrimary\", \"CreatedAtUtc\") VALUES ({Guid.NewGuid()}, {course.Id}, {skill.Id}, {"Beginner"}, {true}, {now})");
+        await FluentActions.Awaiting(() => context.Database.ExecuteSqlInterpolatedAsync($"INSERT INTO \"CourseSkills\" (\"Id\", \"CourseId\", \"SkillId\", \"ProficiencyLevel\", \"IsPrimary\", \"CreatedAtUtc\") VALUES ({Guid.NewGuid()}, {course.Id}, {skill.Id}, {"Advanced"}, {false}, {now})")).Should().ThrowAsync<DbException>();
     }
 
     private static Course CreateCourse(string slug) => new("Course", slug, "Description", CourseDifficulty.Foundation, 60);

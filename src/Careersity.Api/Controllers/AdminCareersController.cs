@@ -3,13 +3,16 @@ using Careersity.Application.CareerCatalog.Requests;
 using Careersity.Application.CareerCatalog.Services;
 using Careersity.Domain.Enums;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authorization;
+using Careersity.Api.Infrastructure;
 
 namespace Careersity.Api.Controllers;
 
-/// <summary>Temporarily unsecured career administration endpoints.</summary>
+/// <summary>Administrator-only career management endpoints.</summary>
 [ApiController]
+[Authorize(Policy = SecurityPolicies.AdministratorOnly)]
 [Route("api/admin/careers")]
-[Tags("Admin Career Catalog (Temporarily Unsecured)")]
+[Tags("Administrator Career Catalog")]
 public sealed class AdminCareersController(ICareerService service) : ControllerBase
 {
     [HttpPost]

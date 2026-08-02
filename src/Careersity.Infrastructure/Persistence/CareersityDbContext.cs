@@ -3,6 +3,7 @@ using Careersity.Domain.Careers;
 using Careersity.Domain.Courses;
 using Careersity.Domain.Projects;
 using Careersity.Domain.Skills;
+using Careersity.Domain.Identity;
 using Microsoft.EntityFrameworkCore;
 using Careersity.Application.Abstractions.Persistence;
 using Careersity.Application.Common.Exceptions;
@@ -28,6 +29,8 @@ public sealed class CareersityDbContext(DbContextOptions<CareersityDbContext> op
     public DbSet<Question> Questions => Set<Question>();
     public DbSet<AnswerOption> AnswerOptions => Set<AnswerOption>();
     public DbSet<Project> Projects => Set<Project>();
+    public DbSet<User> Users => Set<User>();
+    public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -43,7 +46,7 @@ public sealed class CareersityDbContext(DbContextOptions<CareersityDbContext> op
         }
         catch (DbUpdateException exception) when (exception.InnerException is PostgresException { SqlState: PostgresErrorCodes.UniqueViolation })
         {
-            throw new ConflictException("The operation conflicts with an existing career catalog record.");
+            throw new ConflictException("The operation conflicts with an existing record.");
         }
     }
 }

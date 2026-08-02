@@ -5,6 +5,7 @@ using Careersity.Domain.Enums;
 using Careersity.Domain.Projects;
 using Careersity.Domain.Skills;
 using Careersity.Infrastructure.Persistence;
+using Careersity.Domain.Identity;
 using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
 using Xunit;
@@ -25,7 +26,7 @@ public sealed class PersistenceModelTests
             typeof(CareerCategory), typeof(Career), typeof(CareerSkill), typeof(CareerPathway),
             typeof(PathwayLevel), typeof(PathwayLevelCourse), typeof(Skill), typeof(Course),
             typeof(CoursePrerequisite), typeof(CourseSkill), typeof(Lesson), typeof(Assessment),
-            typeof(Question), typeof(AnswerOption), typeof(Project)
+            typeof(Question), typeof(AnswerOption), typeof(Project), typeof(User), typeof(RefreshToken)
         };
 
         foreach (var type in expectedTypes)

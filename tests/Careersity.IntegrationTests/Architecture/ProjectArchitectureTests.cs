@@ -2,6 +2,9 @@ using Careersity.Application;
 using Careersity.Infrastructure.Persistence;
 using Careersity.Application.Abstractions.Persistence;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authorization;
+using Careersity.Application.Identity.Requests;
+using Careersity.Api.Infrastructure;
 using FluentAssertions;
 using Xunit;
 
@@ -48,5 +51,44 @@ public sealed class ProjectArchitectureTests
             .Concat(typeof(DependencyInjection).Assembly.GetTypes());
         types.Should().NotContain(x => x.Name.Contains("GenericRepository", StringComparison.Ordinal)
             || x.Name == "IRepository`1");
+    }
+
+    [Fact]
+    public void AdminControllers_RequireAdministratorPolicyAndAreNotAnonymous()
+    {
+        var adminControllers = typeof(Program).Assembly.GetTypes()
+            .Where(x => typeof(ControllerBase).IsAssignableFrom(x) && x.Name.StartsWith("Admin", StringComparison.Ordinal));
+        adminControllers.Should().NotBeEmpty();
+        adminControllers.Should().OnlyContain(x => x.GetCustomAttributes(typeof(AuthorizeAttribute), true)
+            .Cast<AuthorizeAttribute>().Any(a => a.Policy == SecurityPolicies.AdministratorOnly));
+        adminControllers.Should().OnlyContain(x => !x.GetCustomAttributes(typeof(AllowAnonymousAttribute), true).Any());
+    }
+
+    [Fact]
+    public void PublicRegistrationCannotSelectRole() =>
+        typeof(RegisterRequest).GetProperties().Select(x => x.Name).Should().NotContain("Role");
+
+    [Fact]
+    public void PublicLearningContentControllersAreAnonymousAndDoNotExposeDomainReturnTypes()
+    {
+        var publicControllers = typeof(Program).Assembly.GetTypes().Where(x =>
+            x.Name is "PublicSkillsController" or "PublicCoursesController").ToArray();
+        publicControllers.Should().HaveCount(2);
+        publicControllers.Should().OnlyContain(x => x.GetCustomAttributes(typeof(AllowAnonymousAttribute), true).Any());
+        publicControllers.Should().OnlyContain(x => !x.GetCustomAttributes(typeof(AuthorizeAttribute), true).Any());
+        publicControllers.SelectMany(x => x.GetMethods(System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public)
+            .Where(method => method.DeclaringType == x)).Select(x => x.ReturnType)
+            .Should().NotContain(type => type.Assembly == typeof(Careersity.Domain.Courses.Course).Assembly);
+    }
+
+    [Fact]
+    public void SecurityImplementationsRemainOutsideDomain()
+    {
+        var domain = typeof(Careersity.Domain.Identity.User).Assembly;
+        domain.GetReferencedAssemblies().Select(x => x.Name).Should().NotContain([
+            "Microsoft.EntityFrameworkCore", "Microsoft.AspNetCore.Authentication.JwtBearer", "System.IdentityModel.Tokens.Jwt"]);
+        domain.GetTypes().Should().NotContain(x => x.Name.Contains("PasswordHasher", StringComparison.Ordinal)
+            || x.Name.Contains("AccessTokenService", StringComparison.Ordinal));
+        typeof(Careersity.Domain.Identity.RefreshToken).GetProperties().Select(x => x.Name).Should().NotContain("Token");
     }
 }

@@ -7,6 +7,7 @@ using Careersity.Domain.Careers;
 using Careersity.Domain.Courses;
 using Careersity.Domain.Enums;
 using Careersity.Domain.Skills;
+using Careersity.Domain.Identity;
 using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
@@ -137,9 +138,16 @@ internal sealed class TestCatalogContext : DbContext, ICareersityDbContext
     public DbSet<CareerSkill> CareerSkills => Set<CareerSkill>(); public DbSet<CareerPathway> CareerPathways => Set<CareerPathway>();
     public DbSet<PathwayLevel> PathwayLevels => Set<PathwayLevel>(); public DbSet<PathwayLevelCourse> PathwayLevelCourses => Set<PathwayLevelCourse>();
     public DbSet<Skill> Skills => Set<Skill>(); public DbSet<Course> Courses => Set<Course>();
+    public DbSet<Lesson> Lessons => Set<Lesson>(); public DbSet<CoursePrerequisite> CoursePrerequisites => Set<CoursePrerequisite>();
+    public DbSet<CourseSkill> CourseSkills => Set<CourseSkill>();
+    public DbSet<User> Users => Set<User>(); public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
     protected override void OnModelCreating(ModelBuilder builder)
     {
         builder.Entity<CareerPathway>().HasMany(x => x.Levels).WithOne().HasForeignKey(x => x.CareerPathwayId);
         builder.Entity<PathwayLevel>().HasMany(x => x.Courses).WithOne().HasForeignKey(x => x.PathwayLevelId);
+        builder.Entity<User>().HasMany(x => x.RefreshTokens).WithOne().HasForeignKey(x => x.UserId);
+        builder.Entity<Course>().HasMany(x => x.Lessons).WithOne().HasForeignKey(x => x.CourseId);
+        builder.Entity<Course>().HasMany(x => x.Prerequisites).WithOne().HasForeignKey(x => x.CourseId);
+        builder.Entity<Course>().HasMany(x => x.CourseSkills).WithOne().HasForeignKey(x => x.CourseId);
     }
 }

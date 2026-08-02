@@ -25,6 +25,6 @@ public sealed class MigrationTests(PostgreSqlFixture fixture)
         tables.Should().Contain([
             "CareerCategories", "Careers", "CareerSkills", "CareerPathways", "PathwayLevels",
             "PathwayLevelCourses", "Skills", "Courses", "CoursePrerequisites", "CourseSkills",
-            "Lessons", "Assessments", "Questions", "AnswerOptions", "Projects"]);
+            "Lessons", "Assessments", "Questions", "AnswerOptions", "Projects", "Users", "RefreshTokens"]);
     }
 }

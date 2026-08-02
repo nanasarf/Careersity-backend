@@ -53,15 +53,14 @@ GET /api/careers/{slug}
 GET /api/careers/{careerId}/pathway
 ```
 
-Administrative routes are under `/api/admin/career-categories` and `/api/admin/careers`. They support category and career lifecycle operations, career-skill assignments, pathways, levels, and pathway course assignments.
-
-> **Security warning:** Admin routes are temporarily unsecured because authentication and authorization have not been implemented. Do not expose this API to an untrusted network.
+Administrative routes are under `/api/admin/career-categories` and `/api/admin/careers`. They support category and career lifecycle operations, career-skill assignments, pathways, levels, and pathway course assignments. Every `/api/admin/**` endpoint requires an Administrator bearer token; anonymous callers receive `401` and Learners receive `403`.
 
 A minimal PowerShell creation flow is:
 
 ```powershell
-$category = Invoke-RestMethod -Method Post -Uri http://localhost:5080/api/admin/career-categories -ContentType application/json -Body '{"name":"Technology","slug":"technology","description":"Technology careers"}'
-Invoke-RestMethod -Method Post -Uri "http://localhost:5080/api/admin/career-categories/$($category.id)/publish"
+$headers = @{ Authorization = "Bearer $accessToken" }
+$category = Invoke-RestMethod -Method Post -Uri http://localhost:5080/api/admin/career-categories -Headers $headers -ContentType application/json -Body '{"name":"Technology","slug":"technology","description":"Technology careers"}'
+Invoke-RestMethod -Method Post -Uri "http://localhost:5080/api/admin/career-categories/$($category.id)/publish" -Headers $headers
 
 $careerBody = @{
   careerCategoryId = $category.id
@@ -72,12 +71,89 @@ $careerBody = @{
   responsibilities = $null
   estimatedDurationWeeks = 24
 } | ConvertTo-Json
-$career = Invoke-RestMethod -Method Post -Uri http://localhost:5080/api/admin/careers -ContentType application/json -Body $careerBody
-Invoke-RestMethod -Method Post -Uri "http://localhost:5080/api/admin/careers/$($career.id)/publish"
+$career = Invoke-RestMethod -Method Post -Uri http://localhost:5080/api/admin/careers -Headers $headers -ContentType application/json -Body $careerBody
+Invoke-RestMethod -Method Post -Uri "http://localhost:5080/api/admin/careers/$($career.id)/publish" -Headers $headers
 Invoke-RestMethod -Uri "http://localhost:5080/api/careers/software-engineer"
 ```
 
 Career endpoints require PostgreSQL. When the connection string is absent, `/health` and Swagger remain available while career-catalog requests return `503 Service Unavailable` with Problem Details.
+
+## Skill and course content administration
+
+Administrators can manage reusable skills, courses, ordered lessons, prerequisites, and course-skill associations. Public endpoints expose Published content only:
+
+```text
+GET /api/skills
+GET /api/skills/{slug}
+GET /api/courses
+GET /api/courses/{slug}
+GET /api/courses/{courseSlug}/lessons/{lessonSlug}
+```
+
+Protected management routes are rooted at `/api/admin/skills` and `/api/admin/courses` and require an Administrator bearer token. Published and Archived skills and courses are immutable in this version. Courses can be published only when they contain a required lesson, at least one associated and primary Published skill, and only Published prerequisite courses. Prerequisite insertion traverses the existing dependency graph and rejects direct or indirect cycles.
+
+A compact PowerShell administration flow is:
+
+```powershell
+$headers = @{ Authorization = "Bearer $accessToken" }
+$skill = Invoke-RestMethod -Method Post -Uri http://localhost:5080/api/admin/skills -Headers $headers -ContentType application/json -Body (@{
+  name="C#"; slug="csharp"; description="C# programming"; category="Technical"
+} | ConvertTo-Json)
+Invoke-RestMethod -Method Post -Uri "http://localhost:5080/api/admin/skills/$($skill.id)/publish" -Headers $headers
+
+$course = Invoke-RestMethod -Method Post -Uri http://localhost:5080/api/admin/courses -Headers $headers -ContentType application/json -Body (@{
+  title="C# Foundations"; slug="csharp-foundations"; shortDescription="Learn C#."; detailedDescription=$null
+  difficulty="Foundation"; estimatedDurationMinutes=120
+} | ConvertTo-Json)
+$lesson = Invoke-RestMethod -Method Post -Uri "http://localhost:5080/api/admin/courses/$($course.id)/lessons" -Headers $headers -ContentType application/json -Body (@{
+  title="Introduction"; slug="introduction"; summary="Start here"; content="Lesson content"
+  contentType="Article"; externalResourceUrl=$null; estimatedDurationMinutes=15; order=0; isRequired=$true
+} | ConvertTo-Json)
+Invoke-RestMethod -Method Post -Uri "http://localhost:5080/api/admin/courses/$($course.id)/skills" -Headers $headers -ContentType application/json -Body (@{
+  skillId=$skill.id; proficiencyLevel="Beginner"; isPrimary=$true
+} | ConvertTo-Json)
+# For a prerequisite, POST prerequisiteCourseId and isRequired to:
+# /api/admin/courses/{courseId}/prerequisites
+Invoke-RestMethod -Method Post -Uri "http://localhost:5080/api/admin/courses/$($course.id)/publish" -Headers $headers
+Invoke-RestMethod -Uri "http://localhost:5080/api/courses/$($course.slug)"
+```
+
+## Identity and authentication
+
+Careersity uses short-lived HMAC-SHA256 JWT access tokens (15 minutes by default) and rotating refresh tokens (14 days by default). Public registration always creates a Learner. Raw refresh tokens are returned once and only SHA-256 hashes are persisted. Reuse of a rotated token revokes every active session for that user. Password changes require the current password, revoke existing sessions, and return a fresh token pair.
+
+Routes:
+
+```text
+POST /api/auth/register          anonymous
+POST /api/auth/login             anonymous
+POST /api/auth/refresh           anonymous
+POST /api/auth/logout            authenticated
+POST /api/auth/revoke-all        authenticated
+POST /api/auth/change-password   authenticated
+GET  /api/users/me               authenticated
+PUT  /api/users/me               authenticated
+```
+
+Configure the signing key through user secrets or `Jwt__SigningKey`; it must contain at least 32 bytes. No signing key is committed:
+
+```powershell
+dotnet user-secrets set "Jwt:SigningKey" "replace-with-a-random-development-key-of-at-least-32-bytes" --project src/Careersity.Api
+```
+
+Register and log in from PowerShell:
+
+```powershell
+$registration = @{ email="learner@example.test"; firstName="Test"; lastName="Learner"; password="replace-with-a-valid-password"; confirmPassword="replace-with-a-valid-password" } | ConvertTo-Json
+$auth = Invoke-RestMethod -Method Post -Uri http://localhost:5080/api/auth/register -ContentType application/json -Body $registration
+$login = @{ email="learner@example.test"; password="replace-with-a-valid-password" } | ConvertTo-Json
+$auth = Invoke-RestMethod -Method Post -Uri http://localhost:5080/api/auth/login -ContentType application/json -Body $login
+Invoke-RestMethod -Uri http://localhost:5080/api/users/me -Headers @{ Authorization = "Bearer $($auth.accessToken)" }
+```
+
+Swagger exposes a Bearer authorization control; enter the access token value. Authentication endpoints have per-IP in-process rate limits.
+
+Initial Administrator provisioning is explicit, idempotent, and never migration-driven. Supply `InitialAdmin__Enabled=true`, `InitialAdmin__Email`, `InitialAdmin__FirstName`, `InitialAdmin__LastName`, and `InitialAdmin__Password` through environment variables or user secrets. The initializer creates the account only when no user with that normalized email exists and never overwrites its password.
 
 ## PostgreSQL persistence
 
@@ -116,8 +192,8 @@ docker version
 dotnet test tests/Careersity.IntegrationTests/Careersity.IntegrationTests.csproj
 ```
 
-The current migration covers learning-content structure only: careers, pathways, skills, courses, lessons, assessments, and projects. Case-insensitive answer-option text uniqueness is enforced by the Domain; persistence-level enforcement is deferred. Career catalog APIs are implemented, but course administration, users, authentication, authorization, enrollment, learner progress, assessment attempts, and project submissions are not.
+The schema covers learning-content structure plus Users and hashed RefreshTokens. Case-insensitive answer-option text uniqueness is enforced by the Domain; persistence-level enforcement is deferred. Refresh-token history cleanup is also deferred; no background job is included. Password reset, email verification, MFA, social login, enrollment, learner progress, course administration, assessment attempts, and project submissions are not implemented.
 
 ## Current status
 
-This repository contains the Domain and EF Core persistence foundations plus the first career-catalog Application/API vertical slice. The committed connection string is an empty placeholder and contains no secret.
+This repository contains the Domain and EF Core persistence foundations, career catalog vertical slice, and JWT identity/authentication slice. Committed connection strings and JWT signing keys are empty placeholders.

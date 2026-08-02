@@ -1,13 +1,16 @@
 using Careersity.Application.CareerCatalog.Requests;
 using Careersity.Application.CareerCatalog.Services;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authorization;
+using Careersity.Api.Infrastructure;
 
 namespace Careersity.Api.Controllers;
 
-/// <summary>Temporarily unsecured career-skill assignment endpoints.</summary>
+/// <summary>Administrator-only career-skill assignment endpoints.</summary>
 [ApiController]
+[Authorize(Policy = SecurityPolicies.AdministratorOnly)]
 [Route("api/admin/careers/{careerId:guid}/skills")]
-[Tags("Admin Career Catalog (Temporarily Unsecured)")]
+[Tags("Administrator Career Catalog")]
 public sealed class AdminCareerSkillsController(ICareerSkillService service) : ControllerBase
 {
     [HttpGet] public async Task<IActionResult> List(Guid careerId, CancellationToken cancellationToken) => Ok(await service.ListAsync(careerId, false, cancellationToken));

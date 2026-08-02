@@ -3,6 +3,7 @@ using Careersity.Application.Common.Exceptions;
 using Careersity.Domain.Careers;
 using Careersity.Domain.Courses;
 using Careersity.Domain.Skills;
+using Careersity.Domain.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 
@@ -21,6 +22,11 @@ internal sealed class UnavailableCareersityDbContext : ICareersityDbContext
     public DbSet<PathwayLevelCourse> PathwayLevelCourses => throw Error();
     public DbSet<Skill> Skills => throw Error();
     public DbSet<Course> Courses => throw Error();
+    public DbSet<Lesson> Lessons => throw Error();
+    public DbSet<CoursePrerequisite> CoursePrerequisites => throw Error();
+    public DbSet<CourseSkill> CourseSkills => throw Error();
+    public DbSet<User> Users => throw Error();
+    public DbSet<RefreshToken> RefreshTokens => throw Error();
     public DatabaseFacade Database => throw Error();
     public Task<int> SaveChangesAsync(CancellationToken cancellationToken = default) => throw Error();
 }

@@ -16,6 +16,7 @@ public sealed class ApiExceptionHandler(IProblemDetailsService problemDetailsSer
             RequestValidationException => (StatusCodes.Status400BadRequest, "Request validation failed"),
             NotFoundException => (StatusCodes.Status404NotFound, "Resource not found"),
             ConflictException or DomainException => (StatusCodes.Status409Conflict, "Request conflicts with current state"),
+            AuthenticationFailedException or UnauthorizedException => (StatusCodes.Status401Unauthorized, "Authentication failed"),
             ServiceUnavailableException => (StatusCodes.Status503ServiceUnavailable, "Career catalog unavailable"),
             _ => (StatusCodes.Status500InternalServerError, "An unexpected error occurred")
         };

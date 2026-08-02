@@ -1,6 +1,7 @@
 using Careersity.Domain.Careers;
 using Careersity.Domain.Courses;
 using Careersity.Domain.Skills;
+using Careersity.Domain.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 
@@ -16,6 +17,11 @@ public interface ICareersityDbContext
     DbSet<PathwayLevelCourse> PathwayLevelCourses { get; }
     DbSet<Skill> Skills { get; }
     DbSet<Course> Courses { get; }
+    DbSet<Lesson> Lessons { get; }
+    DbSet<CoursePrerequisite> CoursePrerequisites { get; }
+    DbSet<CourseSkill> CourseSkills { get; }
+    DbSet<User> Users { get; }
+    DbSet<RefreshToken> RefreshTokens { get; }
     DatabaseFacade Database { get; }
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 }

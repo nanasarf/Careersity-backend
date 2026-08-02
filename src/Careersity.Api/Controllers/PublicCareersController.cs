@@ -1,10 +1,12 @@
 using Careersity.Application.CareerCatalog.Dtos;
 using Careersity.Application.CareerCatalog.Services;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authorization;
 
 namespace Careersity.Api.Controllers;
 
 [ApiController]
+[AllowAnonymous]
 [Route("api/careers")]
 [Tags("Public Career Catalog")]
 public sealed class PublicCareersController(ICareerService careers, ICareerPathwayService pathways) : ControllerBase
