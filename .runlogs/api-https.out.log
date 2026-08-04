@@ -1,0 +1,193 @@
+Using launch settings from src\Careersity.Api\Properties\launchSettings.json...
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (36ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      SELECT EXISTS (
+    SELECT 1 FROM pg_catalog.pg_class c
+    JOIN pg_catalog.pg_namespace n ON n.oid=c.relnamespace
+    WHERE n.nspname='public' AND
+          c.relname='__EFMigrationsHistory'
+)
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (4ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      SELECT "MigrationId", "ProductVersion"
+      FROM "__EFMigrationsHistory"
+      ORDER BY "MigrationId";
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      SELECT EXISTS (
+    SELECT 1 FROM pg_catalog.pg_class c
+    JOIN pg_catalog.pg_namespace n ON n.oid=c.relnamespace
+    WHERE n.nspname='public' AND
+          c.relname='__EFMigrationsHistory'
+)
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      SELECT EXISTS (
+    SELECT 1 FROM pg_catalog.pg_class c
+    JOIN pg_catalog.pg_namespace n ON n.oid=c.relnamespace
+    WHERE n.nspname='public' AND
+          c.relname='__EFMigrationsHistory'
+)
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      SELECT "MigrationId", "ProductVersion"
+      FROM "__EFMigrationsHistory"
+      ORDER BY "MigrationId";
+info: Microsoft.EntityFrameworkCore.Migrations[20405]
+      No migrations were applied. The database is already up to date.
+info: Careersity.Infrastructure.Initialization.ApplicationStartupInitializer[0]
+      Database migrations applied successfully
+info: Microsoft.AspNetCore.DataProtection.KeyManagement.XmlKeyManager[63]
+      User profile is available. Using 'C:\Users\ennxk\AppData\Local\ASP.NET\DataProtection-Keys' as key repository and Windows DPAPI to encrypt keys at rest.
+info: Microsoft.Hosting.Lifetime[14]
+      Now listening on: https://localhost:7080
+info: Microsoft.Hosting.Lifetime[14]
+      Now listening on: http://localhost:5080
+info: Microsoft.Hosting.Lifetime[0]
+      Application started. Press Ctrl+C to shut down.
+info: Microsoft.Hosting.Lifetime[0]
+      Hosting environment: Development
+info: Microsoft.Hosting.Lifetime[0]
+      Content root path: C:\Users\ennxk\COMSCI\MyCareersity\careersity-backend\src\Careersity.Api
+info: Microsoft.AspNetCore.Hosting.Diagnostics[1]
+      Request starting HTTP/1.1 GET https://localhost:7080/health/ready - - -
+info: Microsoft.AspNetCore.Routing.EndpointMiddleware[0]
+      Executing endpoint 'Health checks'
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      SELECT EXISTS (
+    SELECT 1 FROM pg_catalog.pg_class c
+    JOIN pg_catalog.pg_namespace n ON n.oid=c.relnamespace
+    WHERE n.nspname='public' AND
+          c.relname='__EFMigrationsHistory'
+)
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      SELECT "MigrationId", "ProductVersion"
+      FROM "__EFMigrationsHistory"
+      ORDER BY "MigrationId";
+info: Microsoft.AspNetCore.Routing.EndpointMiddleware[1]
+      Executed endpoint 'Health checks'
+info: Careersity.Api.Infrastructure.RequestLoggingMiddleware[0]
+      HTTP GET /health/ready responded 200 in 81.2307 ms for user anonymous
+info: Microsoft.AspNetCore.Hosting.Diagnostics[2]
+      Request finished HTTP/1.1 GET https://localhost:7080/health/ready - 200 - text/plain 99.1557ms
+info: Microsoft.AspNetCore.Hosting.Diagnostics[1]
+      Request starting HTTP/1.1 GET https://localhost:7080/health/ready - - -
+info: Microsoft.AspNetCore.Routing.EndpointMiddleware[0]
+      Executing endpoint 'Health checks'
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      SELECT EXISTS (
+    SELECT 1 FROM pg_catalog.pg_class c
+    JOIN pg_catalog.pg_namespace n ON n.oid=c.relnamespace
+    WHERE n.nspname='public' AND
+          c.relname='__EFMigrationsHistory'
+)
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (1ms) [Parameters=[], CommandType='Text', CommandTimeout='30']
+      SELECT "MigrationId", "ProductVersion"
+      FROM "__EFMigrationsHistory"
+      ORDER BY "MigrationId";
+info: Microsoft.AspNetCore.Routing.EndpointMiddleware[1]
+      Executed endpoint 'Health checks'
+info: Careersity.Api.Infrastructure.RequestLoggingMiddleware[0]
+      HTTP GET /health/ready responded 200 in 67.0981 ms for user anonymous
+info: Microsoft.AspNetCore.Hosting.Diagnostics[2]
+      Request finished HTTP/1.1 GET https://localhost:7080/health/ready - 200 - text/plain 68.1470ms
+info: Microsoft.AspNetCore.Hosting.Diagnostics[1]
+      Request starting HTTP/2 GET https://localhost:7080/swagger/index.html - - -
+info: Careersity.Api.Infrastructure.RequestLoggingMiddleware[0]
+      HTTP GET /swagger/index.html responded 200 in 87.7349 ms for user anonymous
+info: Microsoft.AspNetCore.Hosting.Diagnostics[2]
+      Request finished HTTP/2 GET https://localhost:7080/swagger/index.html - 200 - text/html;charset=utf-8 88.9723ms
+info: Microsoft.AspNetCore.Hosting.Diagnostics[1]
+      Request starting HTTP/2 GET https://localhost:7080/swagger/v1/swagger.json - - -
+info: Careersity.Api.Infrastructure.RequestLoggingMiddleware[0]
+      HTTP GET /swagger/v1/swagger.json responded 200 in 169.1493 ms for user anonymous
+info: Microsoft.AspNetCore.Hosting.Diagnostics[2]
+      Request finished HTTP/2 GET https://localhost:7080/swagger/v1/swagger.json - 200 - application/json;charset=utf-8 169.5285ms
+info: Microsoft.AspNetCore.Hosting.Diagnostics[1]
+      Request starting HTTP/2 POST https://localhost:7080/api/auth/register - application/json 138
+info: Microsoft.AspNetCore.Cors.Infrastructure.CorsService[5]
+      CORS policy execution failed.
+info: Microsoft.AspNetCore.Cors.Infrastructure.CorsService[6]
+      Request origin https://localhost:7080 does not have permission to access the resource.
+info: Microsoft.AspNetCore.Routing.EndpointMiddleware[0]
+      Executing endpoint 'Careersity.Api.Controllers.AuthenticationController.Register (Careersity.Api)'
+info: Microsoft.AspNetCore.Mvc.Infrastructure.ControllerActionInvoker[102]
+      Route matched with {action = "Register", controller = "Authentication"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.IActionResult] Register(Careersity.Application.Identity.Requests.RegisterRequest, System.Threading.CancellationToken) on controller Careersity.Api.Controllers.AuthenticationController (Careersity.Api).
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (8ms) [Parameters=[@__normalized_0='?'], CommandType='Text', CommandTimeout='30']
+      SELECT EXISTS (
+          SELECT 1
+          FROM "Users" AS u
+          WHERE u."NormalizedEmail" = @__normalized_0)
+info: Microsoft.AspNetCore.Mvc.Infrastructure.ControllerActionInvoker[105]
+      Executed action Careersity.Api.Controllers.AuthenticationController.Register (Careersity.Api) in 207.9875ms
+info: Microsoft.AspNetCore.Routing.EndpointMiddleware[1]
+      Executed endpoint 'Careersity.Api.Controllers.AuthenticationController.Register (Careersity.Api)'
+fail: Microsoft.AspNetCore.Diagnostics.ExceptionHandlerMiddleware[1]
+      An unhandled exception has occurred while executing the request.
+      Careersity.Application.Common.Exceptions.ConflictException: An account with this email already exists.
+         at Careersity.Application.Identity.Services.AuthenticationService.RegisterAsync(RegisterRequest request, String ip, CancellationToken cancellationToken) in C:\Users\ennxk\COMSCI\MyCareersity\careersity-backend\src\Careersity.Application\Identity\Services\AuthenticationService.cs:line 23
+         at Careersity.Api.Controllers.AuthenticationController.Register(RegisterRequest request, CancellationToken cancellationToken) in C:\Users\ennxk\COMSCI\MyCareersity\careersity-backend\src\Careersity.Api\Controllers\AuthenticationController.cs:line 17
+         at Microsoft.AspNetCore.Mvc.Infrastructure.ActionMethodExecutor.TaskOfIActionResultExecutor.Execute(ActionContext actionContext, IActionResultTypeMapper mapper, ObjectMethodExecutor executor, Object controller, Object[] arguments)
+         at Microsoft.AspNetCore.Mvc.Infrastructure.ControllerActionInvoker.<InvokeActionMethodAsync>g__Awaited|12_0(ControllerActionInvoker invoker, ValueTask`1 actionResultValueTask)
+         at Microsoft.AspNetCore.Mvc.Infrastructure.ControllerActionInvoker.<InvokeNextActionFilterAsync>g__Awaited|10_0(ControllerActionInvoker invoker, Task lastTask, State next, Scope scope, Object state, Boolean isCompleted)
+         at Microsoft.AspNetCore.Mvc.Infrastructure.ControllerActionInvoker.Rethrow(ActionExecutedContextSealed context)
+         at Microsoft.AspNetCore.Mvc.Infrastructure.ControllerActionInvoker.Next(State& next, Scope& scope, Object& state, Boolean& isCompleted)
+         at Microsoft.AspNetCore.Mvc.Infrastructure.ControllerActionInvoker.<InvokeInnerFilterAsync>g__Awaited|13_0(ControllerActionInvoker invoker, Task lastTask, State next, Scope scope, Object state, Boolean isCompleted)
+         at Microsoft.AspNetCore.Mvc.Infrastructure.ResourceInvoker.<InvokeFilterPipelineAsync>g__Awaited|20_0(ResourceInvoker invoker, Task lastTask, State next, Scope scope, Object state, Boolean isCompleted)
+         at Microsoft.AspNetCore.Mvc.Infrastructure.ResourceInvoker.<InvokeAsync>g__Logged|17_1(ResourceInvoker invoker)
+         at Microsoft.AspNetCore.Mvc.Infrastructure.ResourceInvoker.<InvokeAsync>g__Logged|17_1(ResourceInvoker invoker)
+         at Microsoft.AspNetCore.Routing.EndpointMiddleware.<Invoke>g__AwaitRequestTask|7_0(Endpoint endpoint, Task requestTask, ILogger logger)
+         at Microsoft.AspNetCore.Authorization.AuthorizationMiddleware.Invoke(HttpContext context)
+         at Microsoft.AspNetCore.Authentication.AuthenticationMiddleware.Invoke(HttpContext context)
+         at Microsoft.AspNetCore.RateLimiting.RateLimitingMiddleware.InvokeInternal(HttpContext context, EnableRateLimitingAttribute enableRateLimitingAttribute)
+         at Swashbuckle.AspNetCore.SwaggerUI.SwaggerUIMiddleware.Invoke(HttpContext httpContext)
+         at Swashbuckle.AspNetCore.Swagger.SwaggerMiddleware.Invoke(HttpContext httpContext, ISwaggerProvider swaggerProvider)
+         at Microsoft.AspNetCore.Diagnostics.ExceptionHandlerMiddlewareImpl.<Invoke>g__Awaited|10_0(ExceptionHandlerMiddlewareImpl middleware, HttpContext context, Task task)
+info: Careersity.Api.Infrastructure.RequestLoggingMiddleware[0]
+      HTTP POST /api/auth/register responded 409 in 268.3104 ms for user anonymous
+info: Microsoft.AspNetCore.Hosting.Diagnostics[2]
+      Request finished HTTP/2 POST https://localhost:7080/api/auth/register - 409 - application/problem+json 269.0861ms
+info: Microsoft.AspNetCore.Hosting.Diagnostics[1]
+      Request starting HTTP/2 POST https://localhost:7080/api/auth/login - application/json 58
+info: Microsoft.AspNetCore.Cors.Infrastructure.CorsService[5]
+      CORS policy execution failed.
+info: Microsoft.AspNetCore.Cors.Infrastructure.CorsService[6]
+      Request origin https://localhost:7080 does not have permission to access the resource.
+info: Microsoft.AspNetCore.Routing.EndpointMiddleware[0]
+      Executing endpoint 'Careersity.Api.Controllers.AuthenticationController.Login (Careersity.Api)'
+info: Microsoft.AspNetCore.Mvc.Infrastructure.ControllerActionInvoker[102]
+      Route matched with {action = "Login", controller = "Authentication"}. Executing controller action with signature System.Threading.Tasks.Task`1[Microsoft.AspNetCore.Mvc.IActionResult] Login(Careersity.Application.Identity.Requests.LoginRequest, System.Threading.CancellationToken) on controller Careersity.Api.Controllers.AuthenticationController (Careersity.Api).
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (5ms) [Parameters=[@__normalized_0='?'], CommandType='Text', CommandTimeout='30']
+      SELECT t."Id", t."CreatedAtUtc", t."Email", t."FirstName", t."IsActive", t."LastLoginAtUtc", t."LastName", t."NormalizedEmail", t."PasswordHash", t."Role", t."UpdatedAtUtc", r."Id", r."CreatedAtUtc", r."CreatedByIp", r."ExpiresAtUtc", r."ReplacedByTokenId", r."RevokedAtUtc", r."RevokedByIp", r."TokenHash", r."UserId"
+      FROM (
+          SELECT u."Id", u."CreatedAtUtc", u."Email", u."FirstName", u."IsActive", u."LastLoginAtUtc", u."LastName", u."NormalizedEmail", u."PasswordHash", u."Role", u."UpdatedAtUtc"
+          FROM "Users" AS u
+          WHERE u."NormalizedEmail" = @__normalized_0
+          LIMIT 2
+      ) AS t
+      LEFT JOIN "RefreshTokens" AS r ON t."Id" = r."UserId"
+      ORDER BY t."Id"
+info: Microsoft.EntityFrameworkCore.Database.Command[20101]
+      Executed DbCommand (7ms) [Parameters=[@p0='?' (DbType = Guid), @p1='?' (DbType = DateTime), @p2='?', @p3='?' (DbType = DateTime), @p4='?' (DbType = Guid), @p5='?' (DbType = DateTime), @p6='?', @p7='?', @p8='?' (DbType = Guid), @p11='?' (DbType = Guid), @p9='?' (DbType = DateTime), @p10='?' (DbType = DateTime)], CommandType='Text', CommandTimeout='30']
+      INSERT INTO "RefreshTokens" ("Id", "CreatedAtUtc", "CreatedByIp", "ExpiresAtUtc", "ReplacedByTokenId", "RevokedAtUtc", "RevokedByIp", "TokenHash", "UserId")
+      VALUES (@p0, @p1, @p2, @p3, @p4, @p5, @p6, @p7, @p8);
+      UPDATE "Users" SET "LastLoginAtUtc" = @p9, "UpdatedAtUtc" = @p10
+      WHERE "Id" = @p11;
+info: Careersity.Application.Identity.Services.AuthenticationService[0]
+      Login succeeded for user a855947d-12d6-44b1-8cfa-761a220a1a56
+info: Microsoft.AspNetCore.Mvc.Infrastructure.ObjectResultExecutor[1]
+      Executing OkObjectResult, writing value of type 'Careersity.Application.Identity.Dtos.AuthenticationResultDto'.
+info: Microsoft.AspNetCore.Mvc.Infrastructure.ControllerActionInvoker[105]
+      Executed action Careersity.Api.Controllers.AuthenticationController.Login (Careersity.Api) in 372.5147ms
+info: Microsoft.AspNetCore.Routing.EndpointMiddleware[1]
+      Executed endpoint 'Careersity.Api.Controllers.AuthenticationController.Login (Careersity.Api)'
+info: Careersity.Api.Infrastructure.RequestLoggingMiddleware[0]
+      HTTP POST /api/auth/login responded 200 in 377.4672 ms for user anonymous
+info: Microsoft.AspNetCore.Hosting.Diagnostics[2]
+      Request finished HTTP/2 POST https://localhost:7080/api/auth/login - 200 - application/json;+charset=utf-8 379.9180ms
