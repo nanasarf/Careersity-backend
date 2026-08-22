@@ -13,7 +13,8 @@ public sealed class CareerPathwayService(ICareersityDbContext db) : ICareerPathw
     public async Task<CareerPathwayDto> CreateAsync(Guid careerId, CreateCareerPathwayRequest request, CancellationToken cancellationToken)
     {
         if (careerId != request.CareerId) throw new RequestValidationException("Route career ID must match the request career ID.");
-        await RequireCareerAsync(careerId, cancellationToken);
+        var career = await RequireCareerAsync(careerId, cancellationToken);
+        if (career.Status == ContentStatus.Archived) throw new ConflictException("A pathway cannot be created for an archived career.");
         await EnsureUniqueVersionAsync(careerId, request.Version.Trim(), null, cancellationToken);
         var pathway = new CareerPathway(careerId, request.Name, request.Version, request.Description, request.IsPrimary);
         if (request.IsPrimary) await DemoteExistingPrimaryAsync(careerId, null, cancellationToken);
@@ -35,7 +36,7 @@ public sealed class CareerPathwayService(ICareersityDbContext db) : ICareerPathw
     {
         var pathway = await LoadAggregateAsync(careerId, pathwayId, cancellationToken);
         var career = await db.Careers.AsNoTracking().SingleAsync(x => x.Id == careerId, cancellationToken);
-        if (career.Status != ContentStatus.Published) throw new ConflictException("The parent career must be published first.");
+        if (career.Status == ContentStatus.Archived) throw new ConflictException("A pathway cannot be published for an archived career.");
         if (pathway.Levels.Count == 0) throw new ConflictException("A pathway must contain at least one level.");
         if (pathway.Levels.Any(x => x.Courses.Count == 0)) throw new ConflictException("Every pathway level must contain at least one course.");
         var courseIds = pathway.Levels.SelectMany(x => x.Courses).Select(x => x.CourseId).Distinct().ToArray();
@@ -152,8 +153,9 @@ public sealed class CareerPathwayService(ICareersityDbContext db) : ICareerPathw
         ?? throw new NotFoundException("Career pathway was not found.");
     private async Task<CareerPathway> FindAsync(Guid careerId, Guid pathwayId, bool noTracking, CancellationToken cancellationToken)
     { var query = noTracking ? db.CareerPathways.AsNoTracking() : db.CareerPathways; return await query.SingleOrDefaultAsync(x => x.Id == pathwayId && x.CareerId == careerId, cancellationToken) ?? throw new NotFoundException("Career pathway was not found."); }
-    private async Task RequireCareerAsync(Guid careerId, CancellationToken cancellationToken)
-    { if (!await db.Careers.AnyAsync(x => x.Id == careerId, cancellationToken)) throw new NotFoundException("Career was not found."); }
+    private async Task<Career> RequireCareerAsync(Guid careerId, CancellationToken cancellationToken) =>
+        await db.Careers.SingleOrDefaultAsync(x => x.Id == careerId, cancellationToken)
+        ?? throw new NotFoundException("Career was not found.");
     private async Task EnsureUniqueVersionAsync(Guid careerId, string version, Guid? excludedId, CancellationToken cancellationToken)
     { if (await db.CareerPathways.AnyAsync(x => x.CareerId == careerId && x.Version == version && (!excludedId.HasValue || x.Id != excludedId), cancellationToken)) throw new ConflictException("A pathway with this version already exists for the career."); }
     private async Task DemoteExistingPrimaryAsync(Guid careerId, Guid? excludedId, CancellationToken cancellationToken)

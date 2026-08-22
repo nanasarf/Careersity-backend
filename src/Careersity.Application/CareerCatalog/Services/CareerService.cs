@@ -44,6 +44,8 @@ public sealed class CareerService(ICareersityDbContext db) : ICareerService
         var career = await FindAsync(id, cancellationToken);
         var category = await RequireCategoryAsync(career.CareerCategoryId, cancellationToken);
         if (category.Status != ContentStatus.Published) throw new ConflictException("A career cannot be published until its category is published.");
+        if (!await db.CareerPathways.AnyAsync(x => x.CareerId == id && x.IsPrimary && x.Status == ContentStatus.Published, cancellationToken))
+            throw new ConflictException("A career cannot be published until it has a primary published pathway.");
         career.Publish(); await db.SaveChangesAsync(cancellationToken);
     }
 

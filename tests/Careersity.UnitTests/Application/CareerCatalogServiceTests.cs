@@ -50,14 +50,19 @@ public sealed class CareerServiceTests
         var category = new CareerCategory("Technology", "technology"); db.Add(category); await db.SaveChangesAsync();
         var career = await service.CreateAsync(Request(category.Id, "career"), default);
         await service.Invoking(x => x.PublishAsync(career.Id, default)).Should().ThrowAsync<ConflictException>();
-        category.Publish(); await db.SaveChangesAsync(); await service.PublishAsync(career.Id, default);
+        category.Publish(); await db.SaveChangesAsync();
+        await service.Invoking(x => x.PublishAsync(career.Id, default)).Should().ThrowAsync<ConflictException>();
+        var pathway = new CareerPathway(career.Id, "Primary", "1", isPrimary: true); pathway.Publish();
+        db.Add(pathway); await db.SaveChangesAsync(); await service.PublishAsync(career.Id, default);
         (await service.GetAdminAsync(career.Id, default)).Status.Should().Be(ContentStatus.Published);
     }
 
     [Fact] public async Task DuplicateSlugIsRejected_AndPublicSearchExcludesDrafts()
     {
         await using var db = TestCatalogContext.Create(); var category = new CareerCategory("Technology", "technology"); category.Publish(); db.Add(category); await db.SaveChangesAsync();
-        var service = new CareerService(db); var published = await service.CreateAsync(Request(category.Id, "published", "Data Engineer"), default); await service.PublishAsync(published.Id, default);
+        var service = new CareerService(db); var published = await service.CreateAsync(Request(category.Id, "published", "Data Engineer"), default);
+        var pathway = new CareerPathway(published.Id, "Primary", "1", isPrimary: true); pathway.Publish(); db.Add(pathway); await db.SaveChangesAsync();
+        await service.PublishAsync(published.Id, default);
         await service.CreateAsync(Request(category.Id, "draft", "Draft Career"), default);
         await service.Invoking(x => x.CreateAsync(Request(category.Id, "published"), default)).Should().ThrowAsync<ConflictException>();
         var results = await service.ListPublishedAsync(new(1, 20, "data"), default);
@@ -115,7 +120,7 @@ public sealed class CareerPathwayServiceTests
 
     [Fact] public async Task PublicationRulesAndPublishedImmutability_AreEnforced()
     {
-        await using var db = TestCatalogContext.Create(); var career = await SeedCareerAsync(db, published: true); var service = new CareerPathwayService(db);
+        await using var db = TestCatalogContext.Create(); var career = await SeedCareerAsync(db); var service = new CareerPathwayService(db);
         var pathway = await service.CreateAsync(career.Id, new(career.Id, "Path", null, "1", true), default);
         await service.Invoking(x => x.PublishAsync(career.Id, pathway.Id, default)).Should().ThrowAsync<ConflictException>();
         var level = await service.AddLevelAsync(career.Id, pathway.Id, new("Level", null, 0), default);
