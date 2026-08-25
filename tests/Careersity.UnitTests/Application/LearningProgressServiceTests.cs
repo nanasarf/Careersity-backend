@@ -6,6 +6,7 @@ using Careersity.Application.LearningProgress.Services;
 using Careersity.Domain.Careers;
 using Careersity.Domain.Courses;
 using Careersity.Domain.Enums;
+using Careersity.Domain.Skills;
 using FluentAssertions;
 using Xunit;
 
@@ -63,16 +64,18 @@ public sealed class LearningProgressServiceTests
     {
         var category = new CareerCategory("Category", $"category-{Guid.NewGuid():N}"); category.Publish();
         var career = new Career(category.Id, "Career", $"career-{Guid.NewGuid():N}", "Description"); career.Publish();
+        var skill = new Skill("Skill", $"skill-{Guid.NewGuid():N}", SkillCategory.Technical); skill.Publish();
+        var careerSkill = new CareerSkill(career.Id, skill.Id, SkillProficiencyLevel.Beginner, true, 0);
         var first = new Course("First", $"first-{Guid.NewGuid():N}", "Description", CourseDifficulty.Beginner, 30);
         var required = new Lesson(first.Id, "Required", "required", LessonContentType.Article, 10, 0);
         var optional = new Lesson(first.Id, "Optional", "optional", LessonContentType.Article, 10, 1, isRequired: false);
-        first.AddLesson(required); first.AddLesson(optional); first.Publish();
+        first.AddLesson(required); first.AddLesson(optional); first.AssociateSkill(skill.Id, SkillProficiencyLevel.Beginner, true); first.Publish();
         var second = new Course("Second", $"second-{Guid.NewGuid():N}", "Description", CourseDifficulty.Intermediate, 30);
-        var secondLesson = new Lesson(second.Id, "Required", "required", LessonContentType.Article, 10, 0); second.AddLesson(secondLesson); second.Publish();
+        var secondLesson = new Lesson(second.Id, "Required", "required", LessonContentType.Article, 10, 0); second.AddLesson(secondLesson); second.AssociateSkill(skill.Id, SkillProficiencyLevel.Beginner, true); second.Publish();
         var pathway = new CareerPathway(career.Id, "Pathway", "1.0", isPrimary: true);
         var level0 = new PathwayLevel(pathway.Id, "Level 1", 0); var level1 = new PathwayLevel(pathway.Id, "Level 2", 1);
         level0.AddCourse(first.Id, 0, true); level1.AddCourse(second.Id, 0, true); pathway.AddLevel(level0); pathway.AddLevel(level1); pathway.Publish();
-        db.AddRange(category, career, first, second, pathway); db.Lessons.AddRange(required, optional, secondLesson);
+        db.AddRange(category, career, skill, careerSkill, first, second, pathway); db.Lessons.AddRange(required, optional, secondLesson);
         await db.SaveChangesAsync(); return (Guid.NewGuid(), career, first, second);
     }
 

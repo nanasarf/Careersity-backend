@@ -13,6 +13,7 @@ public sealed class CareerSkillConfiguration : IEntityTypeConfiguration<CareerSk
         builder.ToTable("CareerSkills", table => table.HasCheckConstraint("CK_CareerSkills_DisplayOrder_Nonnegative", "\"DisplayOrder\" >= 0"));
         builder.Property(x => x.RequiredProficiencyLevel).HasConversion<string>().HasMaxLength(20).IsRequired();
         builder.HasIndex(x => new { x.CareerId, x.SkillId }).IsUnique();
+        builder.HasIndex(x => new { x.CareerId, x.DisplayOrder }).IsUnique();
         builder.HasIndex(x => x.CareerId);
         builder.HasIndex(x => x.SkillId);
         builder.HasOne<Career>().WithMany().HasForeignKey(x => x.CareerId).OnDelete(DeleteBehavior.Cascade);

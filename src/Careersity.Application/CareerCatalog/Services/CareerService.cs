@@ -9,7 +9,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Careersity.Application.CareerCatalog.Services;
 
-public sealed class CareerService(ICareersityDbContext db) : ICareerService
+public sealed class CareerService(ICareersityDbContext db, CareerReadinessEvaluator? readiness = null) : ICareerService
 {
     public async Task<CareerDetailDto> CreateAsync(CreateCareerRequest request, CancellationToken cancellationToken)
     {
@@ -25,6 +25,7 @@ public sealed class CareerService(ICareersityDbContext db) : ICareerService
     public async Task<CareerDetailDto> UpdateAsync(Guid id, UpdateCareerRequest request, CancellationToken cancellationToken)
     {
         var career = await FindAsync(id, cancellationToken);
+        if (career.Status != ContentStatus.Draft) throw new ConflictException("Published or archived career details are immutable.");
         var slug = request.Slug.Trim().ToLowerInvariant();
         await EnsureUniqueSlugAsync(slug, id, cancellationToken);
         career.UpdateBasicDetails(request.Title, slug, request.ShortDescription, request.DetailedDescription,
@@ -35,19 +36,25 @@ public sealed class CareerService(ICareersityDbContext db) : ICareerService
 
     public async Task ChangeCategoryAsync(Guid id, ChangeCareerCategoryRequest request, CancellationToken cancellationToken)
     {
-        var career = await FindAsync(id, cancellationToken); await RequireCategoryAsync(request.CareerCategoryId, cancellationToken);
+        var career = await FindAsync(id, cancellationToken);
+        if (career.Status != ContentStatus.Draft) throw new ConflictException("Published or archived careers cannot change category.");
+        await RequireCategoryAsync(request.CareerCategoryId, cancellationToken);
         career.ChangeCategory(request.CareerCategoryId); await db.SaveChangesAsync(cancellationToken);
     }
 
     public async Task PublishAsync(Guid id, CancellationToken cancellationToken)
     {
         var career = await FindAsync(id, cancellationToken);
-        var category = await RequireCategoryAsync(career.CareerCategoryId, cancellationToken);
-        if (category.Status != ContentStatus.Published) throw new ConflictException("A career cannot be published until its category is published.");
-        if (!await db.CareerPathways.AnyAsync(x => x.CareerId == id && x.IsPrimary && x.Status == ContentStatus.Published, cancellationToken))
-            throw new ConflictException("A career cannot be published until it has a primary published pathway.");
+        if (career.Status == ContentStatus.Published) return;
+        var result = await GetReadinessAsync(id, cancellationToken);
+        if (!result.IsReady)
+            throw new ConflictException("Career curriculum is not ready to publish: " +
+                string.Join("; ", result.Checks.Where(x => x.Blocking && !x.Passed).Select(x => x.Message)));
         career.Publish(); await db.SaveChangesAsync(cancellationToken);
     }
+
+    public Task<CareerReadinessDto> GetReadinessAsync(Guid id, CancellationToken cancellationToken) =>
+        (readiness ?? new CareerReadinessEvaluator(db)).EvaluateAsync(id, cancellationToken);
 
     public async Task ArchiveAsync(Guid id, CancellationToken cancellationToken)
     { var career = await FindAsync(id, cancellationToken); career.Archive(); await db.SaveChangesAsync(cancellationToken); }

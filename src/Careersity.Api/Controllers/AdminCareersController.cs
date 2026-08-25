@@ -23,6 +23,7 @@ public sealed class AdminCareersController(ICareerService service) : ControllerB
         [FromQuery] Guid? categoryId = null, [FromQuery] ContentStatus? status = null, CancellationToken cancellationToken = default) =>
         Ok(await service.ListAdminAsync(new CareerQuery(page, pageSize, search, categoryId, status), cancellationToken));
     [HttpGet("{id:guid}")] public async Task<IActionResult> Get(Guid id, CancellationToken cancellationToken) => Ok(await service.GetAdminAsync(id, cancellationToken));
+    [HttpGet("{id:guid}/readiness")] public async Task<IActionResult> Readiness(Guid id, CancellationToken cancellationToken) => Ok(await service.GetReadinessAsync(id, cancellationToken));
     [HttpPut("{id:guid}")] public async Task<IActionResult> Update(Guid id, UpdateCareerRequest request, CancellationToken cancellationToken) => Ok(await service.UpdateAsync(id, request, cancellationToken));
     [HttpPut("{id:guid}/category")] public async Task<IActionResult> ChangeCategory(Guid id, ChangeCareerCategoryRequest request, CancellationToken cancellationToken) { await service.ChangeCategoryAsync(id, request, cancellationToken); return NoContent(); }
     [HttpPost("{id:guid}/publish")] public async Task<IActionResult> Publish(Guid id, CancellationToken cancellationToken) { await service.PublishAsync(id, cancellationToken); return NoContent(); }

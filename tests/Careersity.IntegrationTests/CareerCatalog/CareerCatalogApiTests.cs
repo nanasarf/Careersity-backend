@@ -49,7 +49,7 @@ public sealed class CareerCatalogApiTests(PostgreSqlFixture database)
 
         (await client.PostAsync($"/api/admin/careers/{career!.Id}/publish", null)).StatusCode.Should().Be(HttpStatusCode.Conflict);
         (await client.PostAsync($"/api/admin/career-categories/{category.Id}/publish", null)).StatusCode.Should().Be(HttpStatusCode.NoContent);
-        (await client.PostAsync($"/api/admin/careers/{career.Id}/publish", null)).StatusCode.Should().Be(HttpStatusCode.NoContent);
+        (await client.PostAsync($"/api/admin/careers/{career.Id}/publish", null)).StatusCode.Should().Be(HttpStatusCode.Conflict);
 
         var skillResponse = await client.PostAsJsonAsync($"/api/admin/careers/{career.Id}/skills",
             new AssignCareerSkillRequest(skill.Id, SkillProficiencyLevel.Intermediate, true, 0));
@@ -67,6 +67,11 @@ public sealed class CareerCatalogApiTests(PostgreSqlFixture database)
         (await client.PostAsJsonAsync($"/api/admin/careers/{career.Id}/pathways/{pathway.Id}/levels/{level!.Id}/courses",
             new AddPathwayLevelCourseRequest(course.Id, 0, true))).StatusCode.Should().Be(HttpStatusCode.Created);
         (await client.PostAsync($"/api/admin/careers/{career.Id}/pathways/{pathway.Id}/publish", null)).StatusCode.Should().Be(HttpStatusCode.NoContent);
+        var readiness = await client.GetFromJsonAsync<CareerReadinessDto>($"/api/admin/careers/{career.Id}/readiness", JsonOptions);
+        readiness!.IsReady.Should().BeTrue();
+        readiness.Checks.Should().OnlyContain(x => x.Passed);
+        (await client.PostAsync($"/api/admin/careers/{career.Id}/publish", null)).StatusCode.Should().Be(HttpStatusCode.NoContent);
+        (await client.PostAsync($"/api/admin/careers/{career.Id}/publish", null)).StatusCode.Should().Be(HttpStatusCode.NoContent);
 
         var publicList = await client.GetFromJsonAsync<PagedResult<CareerListItemDto>>("/api/careers", JsonOptions);
         publicList!.Items.Should().ContainSingle(x => x.Id == career.Id);
@@ -87,6 +92,27 @@ public sealed class CareerCatalogApiTests(PostgreSqlFixture database)
         response.StatusCode.Should().Be(HttpStatusCode.Created);
         var categories = await client.GetFromJsonAsync<IReadOnlyCollection<CareerCategoryDto>>("/api/career-categories", JsonOptions);
         categories.Should().NotContain(x => x.Slug == $"draft-{suffix}");
+    }
+
+    [Fact]
+    public async Task DraftCareerReadiness_ReturnsStableBlockingChecks()
+    {
+        var suffix = Guid.NewGuid().ToString("N");
+        var authenticated = await TestApiFactory.CreateAdministratorClientAsync(database);
+        using var factory = authenticated.Factory; using var client = authenticated.Client;
+        var categoryResponse = await client.PostAsJsonAsync("/api/admin/career-categories",
+            new CreateCareerCategoryRequest("Draft category", $"readiness-category-{suffix}", null));
+        var category = await categoryResponse.Content.ReadFromJsonAsync<CareerCategoryDto>(JsonOptions);
+        var careerResponse = await client.PostAsJsonAsync("/api/admin/careers",
+            new CreateCareerRequest(category!.Id, "Draft career", $"readiness-career-{suffix}", "Description", null, null, null));
+        var career = await careerResponse.Content.ReadFromJsonAsync<CareerDetailDto>(JsonOptions);
+
+        var readiness = await client.GetFromJsonAsync<CareerReadinessDto>($"/api/admin/careers/{career!.Id}/readiness", JsonOptions);
+        readiness!.IsReady.Should().BeFalse();
+        readiness.Checks.Should().Contain(x => x.Code == "CATEGORY_PUBLISHED" && !x.Passed && x.Blocking);
+        readiness.Checks.Should().Contain(x => x.Code == "REQUIRED_CAREER_SKILL_EXISTS" && !x.Passed && x.Blocking);
+        readiness.Checks.Should().Contain(x => x.Code == "PRIMARY_PATHWAY_EXISTS" && !x.Passed && x.Blocking);
+        readiness.Checks.Should().OnlyHaveUniqueItems(x => x.Code);
     }
 
     [Fact]
@@ -121,7 +147,8 @@ public sealed class CareerCatalogApiTests(PostgreSqlFixture database)
     {
         var skill = new Skill("C#", $"csharp-{suffix}", SkillCategory.Technical); skill.Publish();
         var course = new Course("C# Foundations", $"csharp-foundations-{suffix}", "Learn C#.", CourseDifficulty.Foundation, 60);
-        course.AddLesson(new Lesson(course.Id, "Introduction", "introduction", LessonContentType.Article, 10, 0)); course.Publish();
+        course.AddLesson(new Lesson(course.Id, "Introduction", "introduction", LessonContentType.Article, 10, 0));
+        course.AssociateSkill(skill.Id, SkillProficiencyLevel.Beginner, true); course.Publish();
         await using var context = database.CreateContext(); context.AddRange(skill, course); await context.SaveChangesAsync();
         return (skill, course);
     }

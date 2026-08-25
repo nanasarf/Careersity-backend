@@ -27,7 +27,15 @@ public sealed class SkillService(ICareersityDbContext db) : ISkillService
     public async Task PublishAsync(Guid id, CancellationToken cancellationToken)
     { var skill = await FindAsync(id, cancellationToken); skill.Publish(); await db.SaveChangesAsync(cancellationToken); }
     public async Task ArchiveAsync(Guid id, CancellationToken cancellationToken)
-    { var skill = await FindAsync(id, cancellationToken); skill.Archive(); await db.SaveChangesAsync(cancellationToken); }
+    {
+        var skill = await FindAsync(id, cancellationToken);
+        if (await (from assignment in db.CareerSkills.AsNoTracking()
+            join career in db.Careers.AsNoTracking() on assignment.CareerId equals career.Id
+            where assignment.SkillId == id && career.Status == ContentStatus.Published
+            select assignment.Id).AnyAsync(cancellationToken))
+            throw new ConflictException("A skill used by a published career cannot be archived.");
+        skill.Archive(); await db.SaveChangesAsync(cancellationToken);
+    }
     public async Task<SkillDto> GetAdminAsync(Guid id, CancellationToken cancellationToken) => ToDto(await FindAsync(id, cancellationToken));
     public Task<PagedResult<SkillListItemDto>> ListAdminAsync(SkillQuery query, CancellationToken cancellationToken) => ListAsync(query, false, cancellationToken);
     public Task<PagedResult<SkillListItemDto>> ListPublishedAsync(SkillQuery query, CancellationToken cancellationToken) => ListAsync(query, true, cancellationToken);

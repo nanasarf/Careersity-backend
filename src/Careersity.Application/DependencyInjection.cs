@@ -20,6 +20,7 @@ public static class DependencyInjection
         services.AddValidatorsFromAssembly(typeof(DependencyInjection).Assembly);
         services.AddScoped<ICareerCategoryService, CareerCategoryService>();
         services.AddScoped<ICareerService, CareerService>();
+        services.AddScoped<CareerReadinessEvaluator>();
         services.AddScoped<ICareerSkillService, CareerSkillService>();
         services.AddScoped<ICareerPathwayService, CareerPathwayService>();
         services.AddScoped<IAuthenticationService, AuthenticationService>();

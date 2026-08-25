@@ -3,6 +3,7 @@ using Careersity.Domain.Exceptions;
 using FluentValidation;
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 
 namespace Careersity.Api.Infrastructure;
 
@@ -15,7 +16,7 @@ public sealed class ApiExceptionHandler(IProblemDetailsService problemDetailsSer
             ValidationException or ArgumentException => (StatusCodes.Status400BadRequest, "Request validation failed"),
             RequestValidationException => (StatusCodes.Status400BadRequest, "Request validation failed"),
             NotFoundException => (StatusCodes.Status404NotFound, "Resource not found"),
-            ConflictException or DomainException => (StatusCodes.Status409Conflict, "Request conflicts with current state"),
+            ConflictException or DomainException or DbUpdateException => (StatusCodes.Status409Conflict, "Request conflicts with current state"),
             AuthenticationFailedException or UnauthorizedException => (StatusCodes.Status401Unauthorized, "Authentication failed"),
             ServiceUnavailableException => (StatusCodes.Status503ServiceUnavailable, "Career catalog unavailable"),
             _ => (StatusCodes.Status500InternalServerError, "An unexpected error occurred")
@@ -25,7 +26,8 @@ public sealed class ApiExceptionHandler(IProblemDetailsService problemDetailsSer
         var details = new ProblemDetails
         {
             Type = $"https://httpstatuses.com/{status}", Title = title, Status = status,
-            Detail = status == 500 ? "An unexpected error occurred." : exception.Message,
+            Detail = exception is DbUpdateException ? "The change conflicts with an existing record or relationship. Refresh and retry." :
+                status == 500 ? "An unexpected error occurred." : exception.Message,
             Instance = context.Request.Path
         };
         details.Extensions["traceId"] = context.TraceIdentifier;

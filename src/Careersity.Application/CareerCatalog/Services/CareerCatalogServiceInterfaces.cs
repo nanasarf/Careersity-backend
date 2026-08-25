@@ -22,6 +22,7 @@ public interface ICareerService
     Task ChangeCategoryAsync(Guid id, ChangeCareerCategoryRequest request, CancellationToken cancellationToken);
     Task PublishAsync(Guid id, CancellationToken cancellationToken);
     Task ArchiveAsync(Guid id, CancellationToken cancellationToken);
+    Task<CareerReadinessDto> GetReadinessAsync(Guid id, CancellationToken cancellationToken);
     Task<CareerDetailDto> GetAdminAsync(Guid id, CancellationToken cancellationToken);
     Task<PagedResult<CareerListItemDto>> ListAdminAsync(CareerQuery query, CancellationToken cancellationToken);
     Task<PagedResult<CareerListItemDto>> ListPublishedAsync(CareerQuery query, CancellationToken cancellationToken);

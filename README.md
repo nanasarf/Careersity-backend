@@ -236,6 +236,10 @@ Swagger exposes a Bearer authorization control; enter the access token value. Au
 
 Initial Administrator provisioning is explicit, idempotent, and never migration-driven. Supply `InitialAdmin__Enabled=true`, `InitialAdmin__Email`, `InitialAdmin__FirstName`, `InitialAdmin__LastName`, and `InitialAdmin__Password` through environment variables or user secrets. The initializer creates the account only when no user with that normalized email exists and never overwrites its password.
 
+### Career curriculum publication lifecycle
+
+Draft careers remain incrementally authorable. Publication follows one direction: publish the category and course dependencies; prepare career skills and a Draft primary pathway; publish the structurally valid pathway while its career is still Draft; then publish the career. `GET /api/admin/careers/{careerId}/readiness` returns the backend-owned checklist used by career publication. A career requires Published, contiguously ordered skills (including one required skill), exactly one Published primary pathway, contiguous nonempty levels and course orders, at least one required course, and Published courses whose lessons, skills, prerequisites, and assigned external resources remain valid. All courses assigned to a Published pathway, including optional courses, must be Published. A course may appear in different levels intentionally, but only once within any one level.
+
 ## PostgreSQL persistence
 
 The schema uses plural PascalCase table names and stores GUIDs as PostgreSQL `uuid`, enums as readable strings, and audit timestamps as `timestamp with time zone`. Database registration is currently optional: when `ConnectionStrings:CareersityDatabase` is empty, the API still starts and `/health` remains independent of PostgreSQL.

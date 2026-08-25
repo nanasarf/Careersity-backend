@@ -12,7 +12,7 @@ public sealed class CareerSkillService(ICareersityDbContext db) : ICareerSkillSe
 {
     public async Task<CareerSkillDto> AssignAsync(Guid careerId, AssignCareerSkillRequest request, CancellationToken cancellationToken)
     {
-        await RequireCareerAsync(careerId, cancellationToken);
+        await RequireMutableCareerAsync(careerId, cancellationToken);
         var skill = await db.Skills.SingleOrDefaultAsync(x => x.Id == request.SkillId, cancellationToken)
             ?? throw new NotFoundException("Skill was not found.");
         if (await db.CareerSkills.AnyAsync(x => x.CareerId == careerId && x.SkillId == request.SkillId, cancellationToken))
@@ -26,7 +26,7 @@ public sealed class CareerSkillService(ICareersityDbContext db) : ICareerSkillSe
 
     public async Task<CareerSkillDto> UpdateAsync(Guid careerId, Guid careerSkillId, UpdateCareerSkillRequest request, CancellationToken cancellationToken)
     {
-        await RequireCareerAsync(careerId, cancellationToken);
+        await RequireMutableCareerAsync(careerId, cancellationToken);
         var assignment = await db.CareerSkills.SingleOrDefaultAsync(x => x.Id == careerSkillId && x.CareerId == careerId, cancellationToken)
             ?? throw new NotFoundException("Career skill assignment was not found.");
         if (await db.CareerSkills.AnyAsync(x => x.CareerId == careerId && x.DisplayOrder == request.DisplayOrder && x.Id != careerSkillId, cancellationToken))
@@ -39,6 +39,7 @@ public sealed class CareerSkillService(ICareersityDbContext db) : ICareerSkillSe
 
     public async Task RemoveAsync(Guid careerId, Guid careerSkillId, CancellationToken cancellationToken)
     {
+        await RequireMutableCareerAsync(careerId, cancellationToken);
         var assignment = await db.CareerSkills.SingleOrDefaultAsync(x => x.Id == careerSkillId && x.CareerId == careerId, cancellationToken)
             ?? throw new NotFoundException("Career skill assignment was not found.");
         db.CareerSkills.Remove(assignment); await db.SaveChangesAsync(cancellationToken);
@@ -53,6 +54,14 @@ public sealed class CareerSkillService(ICareersityDbContext db) : ICareerSkillSe
     private async Task RequireCareerAsync(Guid careerId, CancellationToken cancellationToken)
     {
         if (!await db.Careers.AnyAsync(x => x.Id == careerId, cancellationToken)) throw new NotFoundException("Career was not found.");
+    }
+
+    private async Task RequireMutableCareerAsync(Guid careerId, CancellationToken cancellationToken)
+    {
+        var career = await db.Careers.AsNoTracking().SingleOrDefaultAsync(x => x.Id == careerId, cancellationToken)
+            ?? throw new NotFoundException("Career was not found.");
+        if (career.Status != ContentStatus.Draft)
+            throw new ConflictException("Career skills are immutable after the career leaves Draft status.");
     }
 
     private static CareerSkillDto ToDto(CareerSkill assignment, Domain.Skills.Skill skill) =>

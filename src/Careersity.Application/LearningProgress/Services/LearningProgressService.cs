@@ -2,6 +2,7 @@ using Careersity.Application.Abstractions.Authentication;
 using Careersity.Application.Abstractions.Persistence;
 using Careersity.Application.Common.Exceptions;
 using Careersity.Application.Common.Models;
+using Careersity.Application.CareerCatalog.Services;
 using Careersity.Application.CurriculumActivities.Dtos;
 using Careersity.Application.LearningContent.Dtos;
 using Careersity.Application.LearningProgress.Dtos;
@@ -14,13 +15,16 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Careersity.Application.LearningProgress.Services;
 
-public sealed class LearningProgressService(ICareersityDbContext db, ICurrentUser currentUser, ICourseCompletionEvaluator completionEvaluator) : ILearningProgressService
+public sealed class LearningProgressService(ICareersityDbContext db, ICurrentUser currentUser,
+    ICourseCompletionEvaluator completionEvaluator, CareerReadinessEvaluator? readiness = null) : ILearningProgressService
 {
     public async Task<CareerEnrollmentDetailDto> EnrollAsync(EnrollInCareerRequest request, CancellationToken token)
     {
         var userId = UserId();
         var career = await db.Careers.AsNoTracking().SingleOrDefaultAsync(x => x.Id == request.CareerId && x.Status == ContentStatus.Published, token)
             ?? throw new NotFoundException("Published career was not found.");
+        var curriculum = await (readiness ?? new CareerReadinessEvaluator(db)).EvaluateAsync(career.Id, token);
+        if (!curriculum.IsReady) throw new ConflictException("The career curriculum is no longer learner-ready.");
         var categoryPublished = await db.CareerCategories.AsNoTracking().AnyAsync(x => x.Id == career.CareerCategoryId && x.Status == ContentStatus.Published, token);
         if (!categoryPublished) throw new ConflictException("The career category must be published before enrollment.");
         var pathway = await db.CareerPathways.AsNoTracking().Include(x => x.Levels).ThenInclude(x => x.Courses)

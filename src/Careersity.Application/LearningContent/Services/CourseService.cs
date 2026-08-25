@@ -47,7 +47,17 @@ public sealed class CourseService(ICareersityDbContext db) : ICourseService
         course.Publish(); await db.SaveChangesAsync(cancellationToken);
     }
     public async Task ArchiveAsync(Guid id, CancellationToken cancellationToken)
-    { var course = await FindAsync(id, false, cancellationToken); course.Archive(); await db.SaveChangesAsync(cancellationToken); }
+    {
+        var course = await FindAsync(id, false, cancellationToken);
+        var usedByPublishedCareer = await (from assignment in db.PathwayLevelCourses.AsNoTracking()
+            join level in db.PathwayLevels.AsNoTracking() on assignment.PathwayLevelId equals level.Id
+            join pathway in db.CareerPathways.AsNoTracking() on level.CareerPathwayId equals pathway.Id
+            join career in db.Careers.AsNoTracking() on pathway.CareerId equals career.Id
+            where assignment.CourseId == id && pathway.IsPrimary && pathway.Status == ContentStatus.Published && career.Status == ContentStatus.Published
+            select assignment.Id).AnyAsync(cancellationToken);
+        if (usedByPublishedCareer) throw new ConflictException("A course used by a published career curriculum cannot be archived.");
+        course.Archive(); await db.SaveChangesAsync(cancellationToken);
+    }
     public async Task<CourseDetailDto> GetAdminAsync(Guid id, CancellationToken cancellationToken) => await BuildDetailAsync(await FindAsync(id, false, cancellationToken), false, cancellationToken);
     public Task<PagedResult<CourseListItemDto>> ListAdminAsync(CourseQuery query, CancellationToken cancellationToken) => ListAsync(query, false, cancellationToken);
     public Task<PagedResult<CourseListItemDto>> ListPublishedAsync(CourseQuery query, CancellationToken cancellationToken) => ListAsync(query, true, cancellationToken);

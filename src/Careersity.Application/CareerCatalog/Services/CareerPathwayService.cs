@@ -14,7 +14,7 @@ public sealed class CareerPathwayService(ICareersityDbContext db) : ICareerPathw
     {
         if (careerId != request.CareerId) throw new RequestValidationException("Route career ID must match the request career ID.");
         var career = await RequireCareerAsync(careerId, cancellationToken);
-        if (career.Status == ContentStatus.Archived) throw new ConflictException("A pathway cannot be created for an archived career.");
+        if (career.Status != ContentStatus.Draft) throw new ConflictException("Pathways can be created only while the career is Draft.");
         await EnsureUniqueVersionAsync(careerId, request.Version.Trim(), null, cancellationToken);
         var pathway = new CareerPathway(careerId, request.Name, request.Version, request.Description, request.IsPrimary);
         if (request.IsPrimary) await DemoteExistingPrimaryAsync(careerId, null, cancellationToken);
@@ -25,6 +25,8 @@ public sealed class CareerPathwayService(ICareersityDbContext db) : ICareerPathw
     public async Task<CareerPathwayDto> UpdateAsync(Guid careerId, Guid pathwayId, UpdateCareerPathwayRequest request, CancellationToken cancellationToken)
     {
         var pathway = await LoadAggregateAsync(careerId, pathwayId, cancellationToken); EnsureMutable(pathway);
+        if (!await db.Careers.AnyAsync(x => x.Id == careerId && x.Status == ContentStatus.Draft, cancellationToken))
+            throw new ConflictException("Pathway metadata can be changed only while the career is Draft.");
         await EnsureUniqueVersionAsync(careerId, request.Version.Trim(), pathwayId, cancellationToken);
         if (request.IsPrimary && !pathway.IsPrimary) await DemoteExistingPrimaryAsync(careerId, pathwayId, cancellationToken);
         pathway.UpdateDetails(request.Name, request.Version, request.Description); pathway.SetPrimary(request.IsPrimary);
@@ -35,10 +37,17 @@ public sealed class CareerPathwayService(ICareersityDbContext db) : ICareerPathw
     public async Task PublishAsync(Guid careerId, Guid pathwayId, CancellationToken cancellationToken)
     {
         var pathway = await LoadAggregateAsync(careerId, pathwayId, cancellationToken);
+        if (pathway.Status == ContentStatus.Published) return;
         var career = await db.Careers.AsNoTracking().SingleAsync(x => x.Id == careerId, cancellationToken);
         if (career.Status == ContentStatus.Archived) throw new ConflictException("A pathway cannot be published for an archived career.");
         if (pathway.Levels.Count == 0) throw new ConflictException("A pathway must contain at least one level.");
         if (pathway.Levels.Any(x => x.Courses.Count == 0)) throw new ConflictException("Every pathway level must contain at least one course.");
+        if (!pathway.Levels.Select(x => x.Order).Order().SequenceEqual(Enumerable.Range(0, pathway.Levels.Count)))
+            throw new ConflictException("Pathway level orders must be contiguous from zero.");
+        if (pathway.Levels.Any(x => !x.Courses.Select(c => c.Order).Order().SequenceEqual(Enumerable.Range(0, x.Courses.Count))))
+            throw new ConflictException("Course orders within every pathway level must be contiguous from zero.");
+        if (!pathway.Levels.SelectMany(x => x.Courses).Any(x => x.IsRequired))
+            throw new ConflictException("A pathway must contain at least one required course.");
         var courseIds = pathway.Levels.SelectMany(x => x.Courses).Select(x => x.CourseId).Distinct().ToArray();
         var publishedCount = await db.Courses.CountAsync(x => courseIds.Contains(x.Id) && x.Status == ContentStatus.Published, cancellationToken);
         if (publishedCount != courseIds.Length) throw new ConflictException("Every pathway course must be published before the pathway can be published.");
@@ -46,7 +55,12 @@ public sealed class CareerPathwayService(ICareersityDbContext db) : ICareerPathw
     }
 
     public async Task ArchiveAsync(Guid careerId, Guid pathwayId, CancellationToken cancellationToken)
-    { var pathway = await LoadAggregateAsync(careerId, pathwayId, cancellationToken); pathway.Archive(); await db.SaveChangesAsync(cancellationToken); }
+    {
+        var pathway = await LoadAggregateAsync(careerId, pathwayId, cancellationToken);
+        if (pathway.IsPrimary && await db.Careers.AnyAsync(x => x.Id == careerId && x.Status == ContentStatus.Published, cancellationToken))
+            throw new ConflictException("The primary pathway of a published career cannot be archived.");
+        pathway.Archive(); await db.SaveChangesAsync(cancellationToken);
+    }
 
     public async Task<CareerPathwayDto> GetAdminAsync(Guid careerId, Guid pathwayId, CancellationToken cancellationToken) =>
         await CareerCatalogProjections.LoadPathwayAsync(db, await FindAsync(careerId, pathwayId, true, cancellationToken), false, cancellationToken);

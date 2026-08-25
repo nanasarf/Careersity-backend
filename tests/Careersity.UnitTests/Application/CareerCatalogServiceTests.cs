@@ -52,8 +52,9 @@ public sealed class CareerServiceTests
         await service.Invoking(x => x.PublishAsync(career.Id, default)).Should().ThrowAsync<ConflictException>();
         category.Publish(); await db.SaveChangesAsync();
         await service.Invoking(x => x.PublishAsync(career.Id, default)).Should().ThrowAsync<ConflictException>();
-        var pathway = new CareerPathway(career.Id, "Primary", "1", isPrimary: true); pathway.Publish();
-        db.Add(pathway); await db.SaveChangesAsync(); await service.PublishAsync(career.Id, default);
+        await AddPublishableGraphAsync(db, career.Id);
+        await service.PublishAsync(career.Id, default);
+        await service.PublishAsync(career.Id, default);
         (await service.GetAdminAsync(career.Id, default)).Status.Should().Be(ContentStatus.Published);
     }
 
@@ -61,7 +62,7 @@ public sealed class CareerServiceTests
     {
         await using var db = TestCatalogContext.Create(); var category = new CareerCategory("Technology", "technology"); category.Publish(); db.Add(category); await db.SaveChangesAsync();
         var service = new CareerService(db); var published = await service.CreateAsync(Request(category.Id, "published", "Data Engineer"), default);
-        var pathway = new CareerPathway(published.Id, "Primary", "1", isPrimary: true); pathway.Publish(); db.Add(pathway); await db.SaveChangesAsync();
+        await AddPublishableGraphAsync(db, published.Id);
         await service.PublishAsync(published.Id, default);
         await service.CreateAsync(Request(category.Id, "draft", "Draft Career"), default);
         await service.Invoking(x => x.CreateAsync(Request(category.Id, "published"), default)).Should().ThrowAsync<ConflictException>();
@@ -70,6 +71,22 @@ public sealed class CareerServiceTests
     }
 
     private static CreateCareerRequest Request(Guid categoryId, string slug, string title = "Career") => new(categoryId, title, slug, "Description", null, null, 12);
+
+    private static async Task AddPublishableGraphAsync(TestCatalogContext db, Guid careerId)
+    {
+        var suffix = Guid.NewGuid().ToString("N");
+        var skill = new Skill("Skill", $"skill-{suffix}", SkillCategory.Technical); skill.Publish();
+        var course = new Course("Course", $"course-{suffix}", "Description", CourseDifficulty.Foundation, 60);
+        var lesson = new Lesson(course.Id, "Lesson", "lesson", LessonContentType.Article, 5, 0);
+        var courseSkill = course.AssociateSkill(skill.Id, SkillProficiencyLevel.Beginner, true);
+        course.AddLesson(lesson); course.Publish();
+        var careerSkill = new CareerSkill(careerId, skill.Id, SkillProficiencyLevel.Beginner, true, 0);
+        var pathway = new CareerPathway(careerId, "Primary", "1", isPrimary: true);
+        var level = new PathwayLevel(pathway.Id, "Level", 0); pathway.AddLevel(level);
+        var assignment = level.AddCourse(course.Id, 0, true); pathway.Publish();
+        db.AddRange(skill, course, lesson, courseSkill, careerSkill, pathway, level, assignment);
+        await db.SaveChangesAsync();
+    }
 }
 
 public sealed class CareerSkillServiceTests
@@ -98,6 +115,18 @@ public sealed class CareerSkillServiceTests
 
 public sealed class CareerPathwayServiceTests
 {
+    [Fact] public async Task GappedOrdersAndMissingRequiredCourseBlockPublication()
+    {
+        await using var db = TestCatalogContext.Create(); var career = await SeedCareerAsync(db); var service = new CareerPathwayService(db);
+        var pathway = await service.CreateAsync(career.Id, new(career.Id, "Path", null, "1", true), default);
+        var level = await service.AddLevelAsync(career.Id, pathway.Id, new("Level", null, 1), default);
+        var course = new Course("Course", $"course-{Guid.NewGuid():N}", "Description", CourseDifficulty.Foundation, 60);
+        course.AddLesson(new Lesson(course.Id, "Lesson", "lesson", LessonContentType.Article, 5, 0)); course.Publish();
+        db.Add(course); await db.SaveChangesAsync();
+        await service.AddCourseAsync(career.Id, pathway.Id, level.Id, new(course.Id, 0, false), default);
+        await service.Invoking(x => x.PublishAsync(career.Id, pathway.Id, default)).Should().ThrowAsync<ConflictException>();
+    }
+
     [Fact] public async Task NewPrimaryDemotesExisting_AndDuplicateVersionIsRejected()
     {
         await using var db = TestCatalogContext.Create(); var career = await SeedCareerAsync(db); var service = new CareerPathwayService(db);

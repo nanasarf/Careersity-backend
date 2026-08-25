@@ -26,6 +26,12 @@ public sealed record CareerDetailDto(Guid Id, CareerCategoryDto CareerCategory, 
     ContentStatus Status, IReadOnlyCollection<CareerSkillDto> Skills, CareerPathwayDto? PrimaryPathway,
     DateTimeOffset CreatedAtUtc, DateTimeOffset? UpdatedAtUtc);
 
+public sealed record CareerReadinessCheckDto(string Code, string Label, bool Passed, bool Blocking,
+    string? Message = null, Guid? EntityId = null, string? EntityType = null);
+
+public sealed record CareerReadinessDto(Guid CareerId, bool IsReady,
+    IReadOnlyCollection<CareerReadinessCheckDto> Checks);
+
 public sealed record CareerQuery(int Page = 1, int PageSize = 20, string? Search = null,
     Guid? CategoryId = null, ContentStatus? Status = null)
 {
