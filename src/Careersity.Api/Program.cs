@@ -92,6 +92,8 @@ builder.Services.AddRateLimiter(options =>
         _ => new FixedWindowRateLimiterOptions { PermitLimit = 20, Window = TimeSpan.FromMinutes(1), QueueLimit = 0 }));
     options.AddPolicy(SecurityPolicies.MutationRateLimit, context => RateLimitPartition.GetFixedWindowLimiter(
         context.User.FindFirst("sub")?.Value ?? Key(context), _ => new FixedWindowRateLimiterOptions { PermitLimit = 30, Window = TimeSpan.FromMinutes(1), QueueLimit = 0 }));
+    options.AddPolicy(SecurityPolicies.YouTubeSearchRateLimit, context => RateLimitPartition.GetFixedWindowLimiter(
+        context.User.FindFirst("sub")?.Value ?? Key(context), _ => new FixedWindowRateLimiterOptions { PermitLimit = 10, Window = TimeSpan.FromMinutes(1), QueueLimit = 0 }));
     options.OnRejected = (context, _) => new ValueTask(AuthenticationProblemWriter.WriteAsync(context.HttpContext,
         StatusCodes.Status429TooManyRequests, "Too many requests", "The authentication request limit was exceeded."));
 });
@@ -116,8 +118,8 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 app.UseCors("ConfiguredOrigins");
-app.UseRateLimiter();
 app.UseAuthentication();
+app.UseRateLimiter();
 app.UseAuthorization();
 app.MapControllers();
 app.MapHealthChecks("/health",new HealthCheckOptions{Predicate=x=>x.Tags.Contains("live")});

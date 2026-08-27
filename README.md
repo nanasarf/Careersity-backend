@@ -359,6 +359,24 @@ Invoke-RestMethod -Method Post -Uri "$baseUrl/api/me/career-enrollments/$enrollm
 ```
 
 Current limitations include no provider APIs or OAuth, URL synchronization, scraping, availability jobs, automatic remote completion verification, file/video hosting, Careersity-issued certificates, project review, notifications, payments, recommendations, or frontend.
+
+### Administrator YouTube discovery
+
+An authenticated Administrator can retrieve reviewed candidate metadata from the official YouTube Data API without exposing the API key to the frontend:
+
+```text
+GET /api/admin/youtube/search?query=data+analysis+full+course&maxResults=10&includeDuration=true
+```
+
+The response contains sanitized title, channel, thumbnail URL, canonical video URL, publication date, duration in seconds, and excerpt fields. It does not create, attach, or publish a Careersity resource. Results are cached in-process for 15 minutes by default and requests are limited to 10 per Administrator per minute. Supplying `includeDuration=false` avoids the additional video-detail request.
+
+Enable the endpoint with a backend-only, YouTube Data API-restricted key:
+
+```powershell
+dotnet user-secrets set "YouTube:ApiKey" "your-restricted-api-key" --project src/Careersity.Api
+```
+
+Configuration uses `YouTube__ApiKey`, `YouTube__CacheDurationMinutes`, and `YouTube__RequestTimeoutSeconds`. Keep the key in secret storage; it is sent to Google in the `x-goog-api-key` header and is never returned or logged by Careersity. If the key is absent or Google is unavailable, the endpoint returns sanitized `503 Service Unavailable` Problem Details.
 ## MVP operations and deployment
 
 The backend is a .NET 8 Clean Architecture API backed by PostgreSQL. Its MVP covers identity, administrator-authored career curricula, third-party learning-resource attribution, learner enrollment/progress, and optional native assessment grading. Careersity organizes publicly accessible learning links; it does not own external content or issue degrees.

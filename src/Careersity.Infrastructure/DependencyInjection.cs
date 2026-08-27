@@ -8,6 +8,8 @@ using Careersity.Domain.Identity;
 using Careersity.Infrastructure.Authentication;
 using Microsoft.AspNetCore.Identity;
 using Careersity.Infrastructure.Initialization;
+using Careersity.Application.YouTube.Services;
+using Careersity.Infrastructure.YouTube;
 
 namespace Careersity.Infrastructure;
 
@@ -40,6 +42,21 @@ public static class DependencyInjection
         services.AddOptions<SeedDataOptions>().Bind(configuration.GetSection(SeedDataOptions.SectionName));
         services.AddScoped<IDevelopmentDataSeeder, CareersityDataInitializer>();
         services.AddScoped<ApplicationStartupInitializer>();
+        services.AddMemoryCache();
+        services.AddOptions<YouTubeOptions>()
+            .Bind(configuration.GetSection(YouTubeOptions.SectionName))
+            .Validate(x => x.CacheDurationMinutes is >= 1 and <= 1440,
+                "YouTube:CacheDurationMinutes must be between 1 and 1440.")
+            .Validate(x => x.RequestTimeoutSeconds is >= 1 and <= 60,
+                "YouTube:RequestTimeoutSeconds must be between 1 and 60.")
+            .ValidateOnStart();
+        services.AddHttpClient<IYouTubeSearchService, YouTubeSearchService>(client =>
+        {
+            client.BaseAddress = new Uri("https://www.googleapis.com/youtube/v3/");
+        }).ConfigureHttpClient((provider, client) =>
+        {
+            client.Timeout = TimeSpan.FromSeconds(provider.GetRequiredService<Microsoft.Extensions.Options.IOptions<YouTubeOptions>>().Value.RequestTimeoutSeconds);
+        });
 
         var connectionString = configuration.GetConnectionString("CareersityDatabase");
         if (!string.IsNullOrWhiteSpace(connectionString))

@@ -7,4 +7,5 @@ public static class SecurityPolicies
     public const string RegistrationRateLimit = "RegistrationRateLimit";
     public const string RefreshRateLimit = "RefreshRateLimit";
     public const string MutationRateLimit = "MutationRateLimit";
+    public const string YouTubeSearchRateLimit = "YouTubeSearchRateLimit";
 }

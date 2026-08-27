@@ -19,6 +19,7 @@ public sealed class ApiExceptionHandler(IProblemDetailsService problemDetailsSer
             ConflictException or DomainException or DbUpdateException => (StatusCodes.Status409Conflict, "Request conflicts with current state"),
             AuthenticationFailedException or UnauthorizedException => (StatusCodes.Status401Unauthorized, "Authentication failed"),
             ServiceUnavailableException => (StatusCodes.Status503ServiceUnavailable, "Career catalog unavailable"),
+            ExternalServiceUnavailableException => (StatusCodes.Status503ServiceUnavailable, "External service unavailable"),
             _ => (StatusCodes.Status500InternalServerError, "An unexpected error occurred")
         };
         if (status == StatusCodes.Status500InternalServerError) logger.LogError(exception, "Unhandled request exception");
